@@ -1,0 +1,56 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2013
+VisualStudioVersion = 12.0.30501.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RushHourView", "RushHourView\RushHourView.csproj", "{20CC2DD9-CF4D-4F50-9DBB-ED91E64FB60C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RushHourModel", "RushHourModel\RushHourModel.csproj", "{EE90C37F-2C99-4EFC-A19F-BEAECB3C1865}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Resources", "Resources", "{EB1B76A7-4793-4E61-8330-110518EFC0D6}"
+	ProjectSection(SolutionItems) = preProject
+		configurations.txt = configurations.txt
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{828FFBC0-A050-43D6-8D5B-D8D167D622C7}"
+	ProjectSection(SolutionItems) = preProject
+		README.md = README.md
+		TODO-NOTES.txt = TODO-NOTES.txt
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Debug|ARM = Debug|ARM
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		Release|Any CPU = Release|Any CPU
+		Release|ARM = Release|ARM
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{20CC2DD9-CF4D-4F50-9DBB-ED91E64FB60C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{20CC2DD9-CF4D-4F50-9DBB-ED91E64FB60C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{20CC2DD9-CF4D-4F50-9DBB-ED91E64FB60C}.Debug|ARM.ActiveCfg = Debug|Any CPU
+		{20CC2DD9-CF4D-4F50-9DBB-ED91E64FB60C}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{20CC2DD9-CF4D-4F50-9DBB-ED91E64FB60C}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{20CC2DD9-CF4D-4F50-9DBB-ED91E64FB60C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{20CC2DD9-CF4D-4F50-9DBB-ED91E64FB60C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{20CC2DD9-CF4D-4F50-9DBB-ED91E64FB60C}.Release|ARM.ActiveCfg = Release|Any CPU
+		{20CC2DD9-CF4D-4F50-9DBB-ED91E64FB60C}.Release|x64.ActiveCfg = Release|Any CPU
+		{20CC2DD9-CF4D-4F50-9DBB-ED91E64FB60C}.Release|x86.ActiveCfg = Release|Any CPU
+		{EE90C37F-2C99-4EFC-A19F-BEAECB3C1865}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EE90C37F-2C99-4EFC-A19F-BEAECB3C1865}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EE90C37F-2C99-4EFC-A19F-BEAECB3C1865}.Debug|ARM.ActiveCfg = Debug|Any CPU
+		{EE90C37F-2C99-4EFC-A19F-BEAECB3C1865}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{EE90C37F-2C99-4EFC-A19F-BEAECB3C1865}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{EE90C37F-2C99-4EFC-A19F-BEAECB3C1865}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EE90C37F-2C99-4EFC-A19F-BEAECB3C1865}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EE90C37F-2C99-4EFC-A19F-BEAECB3C1865}.Release|ARM.ActiveCfg = Release|Any CPU
+		{EE90C37F-2C99-4EFC-A19F-BEAECB3C1865}.Release|x64.ActiveCfg = Release|Any CPU
+		{EE90C37F-2C99-4EFC-A19F-BEAECB3C1865}.Release|x86.ActiveCfg = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
