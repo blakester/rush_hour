@@ -3,24 +3,24 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="MainWindow" Height="525" Width="525" KeyDown="mainWindow_KeyDown">
 
-    <Grid x:Name="uiGrid" MouseRightButtonDown="uiGrid_MouseRightButtonDown" ShowGridLines="True">
-        <Grid.RowDefinitions>
+    <Grid x:Name="uiGrid" ShowGridLines="True">
+        <!--<Grid.RowDefinitions>
             <RowDefinition />
             <RowDefinition />
             <RowDefinition />
             <RowDefinition />
             <RowDefinition />
             <RowDefinition />
-        </Grid.RowDefinitions>
+        </Grid.RowDefinitions>-->
 
-        <Grid.ColumnDefinitions>
+        <!--<Grid.ColumnDefinitions>
             <ColumnDefinition />
             <ColumnDefinition />
             <ColumnDefinition />
             <ColumnDefinition />
             <ColumnDefinition />
             <ColumnDefinition />
-        </Grid.ColumnDefinitions>
+        </Grid.ColumnDefinitions>-->
 
         <!--<Border x:Name="car1" Background="Red" Grid.Column="1" Grid.Row="1" Grid.RowSpan="2" BorderThickness="10" BorderBrush="Black" MouseLeftButtonDown="cell1_1_MouseLeftButtonDown" KeyDown="uiGrid_KeyDown" />-->
         <!--<Border x:Name="cell2_2" Background="Red" Grid.Column="2" Grid.Row="1" />-->

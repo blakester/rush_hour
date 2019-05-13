@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace RushHourModel
 {
-    class Grid
+    public class VehicleGrid
     {
         private readonly string configsFile;
         public byte[,] grid; //********************************* SET BACK TO PRIVATE **************************************************
@@ -23,9 +23,13 @@ namespace RushHourModel
         public int ConfigDifficulty
         { get; private set; }
 
+        public bool Solved
+        { get; private set; }
+
         // HOW TO DISALLOW EDITS TO VEHICLES BY THE VIEW? THERE SEEMS TO BE SOME ReadOnly C# THINGS I COULD USE BUT I DON'T
         // KNOW EXACTLY HOW. OR I COULD RETURN A LIST OF STRUCTS THAT CONTAIN ALL THE NEEDED VEHICLE INFO (ID, VERTICAL, LENGTH, ROW, COLUMN).
         public Dictionary<int, Vehicle> vehicles;
+
 
         /// <summary>
         /// Constructs a grid using the specified initialConfig from the specified configurationsFile.
@@ -33,7 +37,7 @@ namespace RushHourModel
         /// </summary>
         /// <param name="configurationsFile">path to text file with grid configurations</param>
         /// <param name="initialConfig">configuration to set grid to (configs start at 1)</param>
-        public Grid(string configurationsFile, int initialConfig)
+        public VehicleGrid(string configurationsFile, int initialConfig)
         {
             configsFile = configurationsFile;
             configurations = new string[File.ReadLines(configurationsFile).Count()];
@@ -42,6 +46,7 @@ namespace RushHourModel
                 configurations[index++] = line;
             SetConfig(initialConfig);            
         }
+
 
         // THIS FUNCTION NEEDS TO CHECK FOR FILE FORMAT ERRORS. USE ONE OR MORE REG EXPRESSIONS?
         /// <summary>
@@ -100,8 +105,10 @@ namespace RushHourModel
 
                 // add the vehicle to the Vehicle Dictionary
                 vehicles.Add(vehicleID++, new Vehicle(row, col, vertical, length));
+                Solved = false; // configuration is now set and unsolved
             }
         }
+
 
         /// <summary>
         /// Moves the specified vehicle the specified number of spaces (negative values move vertical
@@ -111,10 +118,9 @@ namespace RushHourModel
         /// <param name="spaces">number of spaces to move (negative values move up/left)</param>
         /// <param name="solved"></param>
         /// <returns>true if the move was successful/legal</returns>
-        public bool MoveVehicle(int vehicleID, int spaces, out bool solved)
+        public bool MoveVehicle(int vehicleID, int spaces)
         {
             Vehicle v = vehicles[vehicleID]; // get Vehicle being moved
-            solved = false;
 
             // Note: the technique used here is to delete/unmark one end of the Vehicle and add/mark
             // one cell ahead of the other end of the Vehicle, one space at a time. In other words,
@@ -167,7 +173,7 @@ namespace RushHourModel
                         grid[v.FrontRow, v.FrontCol] = 1; // mark the new right-most cell of the Vehicle
                     }
                     if (vehicleID == 1 && v.FrontCol == (Columns - 1)) // check for victory
-                        solved = true;
+                        Solved = true;
                 }
                 // move left
                 else

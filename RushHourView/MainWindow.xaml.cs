@@ -22,43 +22,63 @@ namespace RushHour
     public partial class MainWindow : Window
     {
         private Border selected = null;
+        private Dictionary<Border, int> vehicleIDs;
+        //private Dictionary<int, Border> vehicleIDs;
+        private VehicleGrid grid;
         
         public MainWindow()
         {
             InitializeComponent();
+            grid = new VehicleGrid("../../../configurations.txt", 1);
+            vehicleIDs = new Dictionary<Border, int>(grid.vehicles.Count);
 
-            // CAN USE THESE TO ADD DYNAMIC NUMBER OF ROWS/COLUMNS
-            //uiGrid.RowDefinitions.Add(new RowDefinition());
-            //uiGrid.ColumnDefinitions.Add(new ColumnDefinition());
+            // set uiGrid rows and columns according to the configuration
+            for (int i = 0; i < grid.Rows; i++)
+                uiGrid.RowDefinitions.Add(new RowDefinition());
+            for (int i = 0; i < grid.Columns; i++)
+                uiGrid.ColumnDefinitions.Add(new ColumnDefinition());
 
-            // Initialize cars in loop?
-            //for (int i = 0; i < 3; i++)
-            //{
-                Border car = new Border();
-                car.BorderThickness = new Thickness(10, 10, 10, 10);
-                car.Background = Brushes.Red;
-                car.SetValue(Grid.ColumnSpanProperty, 2);
-                uiGrid.Children.Add(car);
-                //car.MouseLeftButtonDown += new MouseButtonEventHandler(cell1_1_MouseLeftButtonDown);
-                car.AddHandler(Border.MouseLeftButtonDownEvent, new RoutedEventHandler(cell1_1_MouseLeftButtonDown));
-                Grid.SetRow(car, 0);
-                Grid.SetColumn(car, 1);
+            // THESE CAN BE USED TO CLEAR THE ROWS AND COLUMNS
+            //uiGrid.RowDefinitions.Clear();
+            //uiGrid.RowDefinitions.Clear();
 
-                Border car2 = new Border();
-                car2.BorderThickness = new Thickness(10, 10, 10, 10);
-                car2.Background = Brushes.Red;
-                car2.SetValue(Grid.RowSpanProperty, 3);
-                uiGrid.Children.Add(car2);
-                //car.MouseLeftButtonDown += new MouseButtonEventHandler(cell1_1_MouseLeftButtonDown);
-                car2.AddHandler(Border.MouseLeftButtonDownEvent, new RoutedEventHandler(cell1_1_MouseLeftButtonDown));
-                Grid.SetRow(car2, 0);
-                Grid.SetColumn(car2, 4);
-            //}
+            foreach (KeyValuePair<int, Vehicle> kv in grid.vehicles)
+            {
+                Border vehicleBorder = new Border();
+                vehicleBorder.BorderThickness = new Thickness(10, 10, 10, 10);
 
+                if (kv.Key == 1)
+                    vehicleBorder.Background = Brushes.Red;
+                else
+                    vehicleBorder.Background = Brushes.Gray;
+
+                if (kv.Value.Vertical)
+                    vehicleBorder.SetValue(Grid.RowSpanProperty, kv.Value.Length);
+                else
+                    vehicleBorder.SetValue(Grid.ColumnSpanProperty, kv.Value.Length);
+
+                uiGrid.Children.Add(vehicleBorder);
+                vehicleBorder.MouseLeftButtonDown += new MouseButtonEventHandler(Border_MouseLeftButtonDown);
+                //vehicleBorder.AddHandler(Border.MouseLeftButtonDownEvent, new RoutedEventHandler(cell1_1_MouseLeftButtonDown));
+                Grid.SetRow(vehicleBorder, kv.Value.BackRow);
+                Grid.SetColumn(vehicleBorder, kv.Value.BackCol);
+
+                vehicleIDs.Add(vehicleBorder, kv.Key);
+            }
+
+            //Border car = new Border();
+            //car.BorderThickness = new Thickness(10, 10, 10, 10);
+            //car.Background = Brushes.Red;
+            //car.SetValue(Grid.ColumnSpanProperty, 2);
+            //uiGrid.Children.Add(car);
+            ////car.MouseLeftButtonDown += new MouseButtonEventHandler(cell1_1_MouseLeftButtonDown);
+            //car.AddHandler(Border.MouseLeftButtonDownEvent, new RoutedEventHandler(cell1_1_MouseLeftButtonDown));
+            //Grid.SetRow(car, 0);
+            //Grid.SetColumn(car, 1);
         }
 
 
-        private void cell1_1_MouseLeftButtonDown(object sender, RoutedEventArgs e)
+        private void Border_MouseLeftButtonDown(object sender, RoutedEventArgs e)
         {
             // deselect selected
             if (selected != null)
@@ -68,18 +88,6 @@ namespace RushHour
             //Grid.SetColumn(lastSelected, Grid.GetColumn(lastSelected) + 1);
         }
 
-        private void uiGrid_MouseRightButtonDown(object sender, MouseButtonEventArgs e)
-        {
-            mainWindow.Title = "Clicked";
-        }
-
-        private void uiGrid_KeyDown(object sender, KeyEventArgs e)
-        {
-            if (e.Key == Key.Right) // The Arrow-Down key
-            {
-                Grid.SetColumn(selected, Grid.GetColumn(selected) + 1);
-            }
-        }
 
         private void mainWindow_KeyDown(object sender, KeyEventArgs e)
         {
@@ -87,29 +95,40 @@ namespace RushHour
                 return;
             bool vertical = Grid.GetRowSpan(selected) > 1;
 
+            // get ID of selected Vehicle
+            int vID = vehicleIDs[selected];
+
             if (e.Key == Key.Left && !vertical)
             {
-                int destination = Grid.GetColumn(selected) - 1; // BOUNDS CAN BE CHECKED BY THE MODEL TOO
-                if (destination >= 0)
+                if (grid.MoveVehicle(vID, -1))
+                {
+                    int destination = Grid.GetColumn(selected) - 1;
                     Grid.SetColumn(selected, destination);
+                }
             }
             else if (e.Key == Key.Right && !vertical)
             {
-                int destination = Grid.GetColumn(selected) + 1;
-                if (destination < 6)
+                if (grid.MoveVehicle(vID, 1))
+                {
+                    int destination = Grid.GetColumn(selected) + 1;
                     Grid.SetColumn(selected, destination);
+                }                    
             }
             else if (e.Key == Key.Up && vertical)
             {
-                int destination = Grid.GetRow(selected) - 1;
-                if (destination >= 0)
+                if (grid.MoveVehicle(vID, -1))
+                {
+                    int destination = Grid.GetRow(selected) - 1;
                     Grid.SetRow(selected, destination);
+                }                    
             }
             else if (e.Key == Key.Down && vertical)
             {
-                int destination = Grid.GetRow(selected) + 1;
-                if (destination < 6)
+                if (grid.MoveVehicle(vID, 1))
+                {
+                    int destination = Grid.GetRow(selected) + 1;
                     Grid.SetRow(selected, destination);
+                }
             }
         }
 

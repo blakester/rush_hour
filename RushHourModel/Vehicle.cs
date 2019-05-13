@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace RushHourModel
 {
-    class Vehicle
+    public class Vehicle
     {
         private int backRow, backCol;
         private readonly bool objectConstructed = false;
