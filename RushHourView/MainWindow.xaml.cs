@@ -22,7 +22,7 @@ namespace RushHour
     public partial class MainWindow : Window
     {
         private Border selected = null;
-        private Dictionary<Border, int> vehicleIDs;
+        private Dictionary<Border, int> vehicleIDs; // IS A DICTIONARY NECESSARY?
         //private Dictionary<int, Border> vehicleIDs;
         private VehicleGrid grid;
         
@@ -42,39 +42,60 @@ namespace RushHour
             //uiGrid.RowDefinitions.Clear();
             //uiGrid.RowDefinitions.Clear();
 
-            foreach (KeyValuePair<int, Vehicle> kv in grid.vehicles)
+            //foreach (KeyValuePair<int, Vehicle> kv in grid.vehicles)
+            //{
+            //    Border vehicleBorder = new Border();
+            //    vehicleBorder.BorderThickness = new Thickness(10, 10, 10, 10);
+
+            //    if (kv.Key == 1)
+            //        vehicleBorder.Background = Brushes.Red;
+            //    else
+            //        vehicleBorder.Background = Brushes.Gray;
+
+            //    if (kv.Value.Vertical)
+            //        vehicleBorder.SetValue(Grid.RowSpanProperty, kv.Value.Length);
+            //    else
+            //        vehicleBorder.SetValue(Grid.ColumnSpanProperty, kv.Value.Length);
+
+            //    uiGrid.Children.Add(vehicleBorder);
+            //    vehicleBorder.MouseLeftButtonDown += new MouseButtonEventHandler(Border_MouseLeftButtonDown);
+                
+            //    Grid.SetRow(vehicleBorder, kv.Value.BackRow);
+            //    Grid.SetColumn(vehicleBorder, kv.Value.BackCol);
+
+            //    vehicleIDs.Add(vehicleBorder, kv.Key);
+            //}
+
+            int vehicleID = 1;
+            foreach (Vehicle v in grid.vehicles)
             {
                 Border vehicleBorder = new Border();
                 vehicleBorder.BorderThickness = new Thickness(10, 10, 10, 10);
 
-                if (kv.Key == 1)
+                if (vehicleID == 1)
                     vehicleBorder.Background = Brushes.Red;
                 else
                     vehicleBorder.Background = Brushes.Gray;
 
-                if (kv.Value.Vertical)
-                    vehicleBorder.SetValue(Grid.RowSpanProperty, kv.Value.Length);
+                if (v.Vertical)
+                    vehicleBorder.SetValue(Grid.RowSpanProperty, v.Length);
                 else
-                    vehicleBorder.SetValue(Grid.ColumnSpanProperty, kv.Value.Length);
+                    vehicleBorder.SetValue(Grid.ColumnSpanProperty, v.Length);
 
                 uiGrid.Children.Add(vehicleBorder);
                 vehicleBorder.MouseLeftButtonDown += new MouseButtonEventHandler(Border_MouseLeftButtonDown);
-                //vehicleBorder.AddHandler(Border.MouseLeftButtonDownEvent, new RoutedEventHandler(cell1_1_MouseLeftButtonDown));
-                Grid.SetRow(vehicleBorder, kv.Value.BackRow);
-                Grid.SetColumn(vehicleBorder, kv.Value.BackCol);
+                //vehicleBorder.AddHandler(Border.MouseLeftButtonDownEvent, new RoutedEventHandler(Border_MouseLeftButtonDown));
 
-                vehicleIDs.Add(vehicleBorder, kv.Key);
+                //vehicleBorder.Focusable = true;
+                //vehicleBorder.Focus();
+                //vehicleBorder.MouseLeftButtonDown += new MouseButtonEventHandler(Border_MouseLeftButtonDown);
+                //vehicleBorder.AddHandler(Border.GotKeyboardFocusEvent, new RoutedEventHandler(Border_GotFocus));
+
+                Grid.SetRow(vehicleBorder, v.BackRow);
+                Grid.SetColumn(vehicleBorder, v.BackCol);
+
+                vehicleIDs.Add(vehicleBorder, vehicleID++);
             }
-
-            //Border car = new Border();
-            //car.BorderThickness = new Thickness(10, 10, 10, 10);
-            //car.Background = Brushes.Red;
-            //car.SetValue(Grid.ColumnSpanProperty, 2);
-            //uiGrid.Children.Add(car);
-            ////car.MouseLeftButtonDown += new MouseButtonEventHandler(cell1_1_MouseLeftButtonDown);
-            //car.AddHandler(Border.MouseLeftButtonDownEvent, new RoutedEventHandler(cell1_1_MouseLeftButtonDown));
-            //Grid.SetRow(car, 0);
-            //Grid.SetColumn(car, 1);
         }
 
 
@@ -85,8 +106,16 @@ namespace RushHour
                 selected.BorderBrush = null;
             selected = (Border)sender;
             selected.BorderBrush = Brushes.Blue;
-            //Grid.SetColumn(lastSelected, Grid.GetColumn(lastSelected) + 1);
         }
+
+        //private void Border_GotFocus(object sender, RoutedEventArgs e)
+        //{
+        //    // deselect selected
+        //    if (selected != null)
+        //        selected.BorderBrush = null;
+        //    selected = (Border)sender;
+        //    selected.BorderBrush = Brushes.Blue;
+        //}
 
 
         private void mainWindow_KeyDown(object sender, KeyEventArgs e)
