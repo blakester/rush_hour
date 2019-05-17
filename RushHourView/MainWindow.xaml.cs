@@ -29,7 +29,7 @@ namespace RushHour
         public MainWindow()
         {
             InitializeComponent();
-            grid = new VehicleGrid("../../../configurations.txt", 1);
+            grid = new VehicleGrid("../../../configurations.txt", 2);
             vehicleIDs = new Dictionary<Border, int>(grid.vehicles.Count);
 
             // set uiGrid rows and columns according to the configuration
