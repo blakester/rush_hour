@@ -13,12 +13,19 @@ namespace RushHourModel
         //private readonly string configsFile;
         public byte[,] grid; //********************************* SET BACK TO PRIVATE **************************************************
         private string[] configurations;
-        private string[] solutionMoves;
+        private List<string> solutionMoves = new List<string>(64);
+        private int nextSolutionMove; // index into list above; keeps track of next solution move
+
+        // BELOW BOOL ISN'T STRICTLY NECESSARY. ILLEGAL MOVES, REGARDLESS OF THE SOURCE, WON'T WORK.
+        private bool userMoveMade; // indicates the public MoveVehicle() has not been called since last grid set/reset
 
         public int Rows
         { get; private set; }
 
         public int Columns
+        { get; private set; }
+
+        public int CurrentConfig
         { get; private set; }
 
         public int ConfigDifficulty
@@ -29,8 +36,7 @@ namespace RushHourModel
 
         // HOW TO DISALLOW EDITS TO VEHICLES BY THE VIEW? THERE SEEMS TO BE SOME ReadOnly C# THINGS I COULD USE BUT I DON'T
         // KNOW EXACTLY HOW. OR I COULD RETURN A LIST OF STRUCTS THAT CONTAIN ALL THE NEEDED VEHICLE INFO (ID, VERTICAL, LENGTH, ROW, COLUMN).
-        //public Dictionary<int, Vehicle> vehicles;
-        public List<Vehicle> vehicles = new List<Vehicle>(16);
+        public Dictionary<string, Vehicle> vehicles = new Dictionary<string, Vehicle>(32);
 
 
         /// <summary>
@@ -47,6 +53,86 @@ namespace RushHourModel
 
 
         /// <summary>
+        /// Validates the specified configurations file and throws exceptions if errors are encountered.
+        /// </summary>
+        /// <param name="filePath">path to the configurations file</param>
+        private void ValidateConfigurationsFile(string filePath)
+        {
+            configurations = new string[File.ReadLines(filePath).Count()];
+            int config = 1;
+            foreach (string line in File.ReadLines(filePath))
+            {
+                // check for correct number of semicolon-delimited sections
+                string[] sections = line.Split(';');
+                if (sections.Length != 3)
+                    throw new FileFormatException(string.Format("Expected 2 ';' (found {0}). File: '{1}', Line: {2}",
+                        sections.Length - 1, filePath, config));
+
+                // check section 1 (difficulty, number of rows, number of columns)
+                string[] settings = sections[0].Split(' ');
+                int diff, rows, cols;
+                if (settings.Length != 3 || !Int32.TryParse(settings[0], out diff) || !Int32.TryParse(settings[1], out rows) ||
+                    !Int32.TryParse(settings[2], out cols) || diff < 1 || rows < 1 || cols < 1)
+                    throw new FileFormatException(string.Format("Expected 3 positive integers. File: '{0}', Line: {1}, Section: '{2}'",
+                        filePath, config, sections[0]));
+
+                // check section 2 (vehicle encodings)
+                byte[,] tempGrid = new byte[rows, cols];
+                string[] vehicleEncodings = sections[1].Split(',');
+                if (vehicleEncodings.Length == 1 && vehicleEncodings[0].Equals(""))
+                    throw new FileFormatException(string.Format("One or more vehicle encodings required. File: '{0}', Line: {1}", filePath, config));
+
+                // validate each vehicle encoding (ID, row, col, vertical/horizontal, length)
+                foreach (string ve in vehicleEncodings)
+                {
+                    string[] vehicleData = ve.Trim().Split(' ');
+                    int _row, _col, length;
+                    if (vehicleData.Length != 5 || !Int32.TryParse(vehicleData[1], out _row) || !Int32.TryParse(vehicleData[2], out _col) ||
+                        !Int32.TryParse(vehicleData[4], out length) || (!vehicleData[3].Equals("V") && !vehicleData[3].Equals("H")))
+                        throw new FileFormatException(string.Format("Expected vehicle encoding of the form '$ D D (V|H) D' where $ is a string, D is a positive integer, and the fourth element is a V or H. File: '{0}', Line: {1}, Encoding: '{2}'", filePath, config, ve));
+                    int row = _row - 1; // change row and col to zero-indexed
+                    int col = _col - 1;
+                    bool vertical = vehicleData[3].Equals("V");
+
+                    if (row < 0 || col < 0 || length < 1 || (vertical && row + length > rows) || (!vertical && col + length > cols))
+                        throw new FileFormatException(string.Format("Vehicle position and/or length is invalid or out of range. File: '{0}', Line: {1}, Encoding: '{2}'", filePath, config, ve));
+
+                    // make sure vehicles don't overlap
+                    if (vertical)
+                        for (int i = 0; i < length; i++)
+                        {
+                            if (tempGrid[row + i, col] == 1)
+                                throw new FileFormatException(string.Format("Vehicle overlap. File: '{0}', Line: {1}, Encoding: '{2}'",
+                                    filePath, config, ve));
+                            tempGrid[row + i, col] = 1;
+                        }
+                    else
+                        for (int i = 0; i < length; i++)
+                        {
+                            if (tempGrid[row, col + i] == 1)
+                                throw new FileFormatException(string.Format("Vehicle overlap. File: '{0}', Line: {1}, Encoding: '{2}'",
+                                    filePath, config, ve));
+                            tempGrid[row, col + i] = 1;
+                        }
+                }
+
+                // check section 3 (solution moves)
+                string[] solutionMoves = sections[2].Split(',');
+                foreach (string sm in solutionMoves)
+                {
+                    string[] moveData = sm.Trim().Split(' ');
+                    int spaces;
+                    if (moveData.Length != 2 || !Int32.TryParse(moveData[1], out spaces))
+                        throw new FileFormatException(string.Format("Expected solution move of the form '$ D' where $ is a string and D is an integer. File: '{0}', Line: {1}, Move: '{2}'", filePath, config, sm));
+                }
+
+                configurations[config++ - 1] = line; // configuration is valid, add to array
+            }
+        }
+
+
+        // SOMETHING NEEDS TO BE DONE/DECIDED ABOUT GRID RESETS (SEE TODO-NOTES) ************************************************************
+        /// <summary>
         /// Sets the grid to the specified configuration. Enter a negative value for a random configuration.
         /// </summary>
         /// <param name="config">configuration to set grid to (configs start at 1)</param>
@@ -58,6 +144,7 @@ namespace RushHourModel
                 Random rand = new Random();
                 config = rand.Next(configurations.Length) + 1;
             }
+            CurrentConfig = config;
 
             // get the semicolon-delimited sections of the configuration
             string[] sections = configurations[config - 1].Split(';');
@@ -65,21 +152,31 @@ namespace RushHourModel
             // get the config's difficulty and number of rows and columns
             string[] settings = sections[0].Split(' ');
             ConfigDifficulty = Int32.Parse(settings[0]);
-            Rows = Int32.Parse(settings[1]); ;
-            Columns = Int32.Parse(settings[2]); ;
+            int rows = Int32.Parse(settings[1]);
+            int columns = Int32.Parse(settings[2]);
 
-            // Create the Vehicles and set up the grid
-            grid = new byte[Rows, Columns];
+            // create the Vehicles and set up the grid
+            if (rows != Rows || columns != Columns) // only allocate new grid if dimensions have changed
+            {
+                grid = new byte[rows, columns];
+                Rows = rows;
+                Columns = columns;
+            }
+            else
+                Array.Clear(grid, 0, grid.Length);
             string[] vehicleEncodings = sections[1].Split(',');
+            vehicles.Clear();  // THIS COULD POTENTIALLY BE OPTIMIZED SOMEHOW ON GRID RESETS (RESET THE VEHICLE POSITIONS).
+                               // IF IT IS A RESET, GET THE VEHICLE BY ITS ID AND RESET ITS ROW AND COLUMN. *IMPLEMENT THIS IN RESETCONFIG()*.
             foreach (string ve in vehicleEncodings)
             {
                 // parse the vehicle data
                 string[] vehicleData = ve.Trim().Split(' ');
-                int row = Int32.Parse(vehicleData[0]) - 1;
-                int col = Int32.Parse(vehicleData[1]) - 1;
-                bool vertical = vehicleData[2].Equals("V");
-                int length = Int32.Parse(vehicleData[3]);
-                vehicles.Add(new Vehicle(row, col, vertical, length));
+                string id = vehicleData[0];
+                int row = Int32.Parse(vehicleData[1]) - 1;
+                int col = Int32.Parse(vehicleData[2]) - 1;
+                bool vertical = vehicleData[3].Equals("V");
+                int length = Int32.Parse(vehicleData[4]);             
+                vehicles.Add(id, new Vehicle(row, col, vertical, length));
 
                 // mark the vehicle in the underlying grid
                 if (vertical)
@@ -87,10 +184,61 @@ namespace RushHourModel
                         grid[row + i, col] = 1;
                 else
                     for (int i = 0; i < length; i++)
-                        grid[row, col + i] = 1;
-                
-                Solved = false; // configuration is now set and unsolved
+                        grid[row, col + i] = 1;               
             }
+
+            // add each solution move
+            solutionMoves.Clear();
+            foreach (string solutionMove in sections[2].Split(','))
+                solutionMoves.Add(solutionMove.Trim());
+
+            nextSolutionMove = 0;
+            userMoveMade = false;
+            Solved = false; // configuration is now set and unsolved
+        }
+
+
+        public void ResetConfig() // NOT FULLY IMPLEMENTED. WORK ON THIS. *****************************************************************
+        {
+            nextSolutionMove = 0;
+            userMoveMade = false;
+            Solved = false;
+        }
+
+
+        /// <summary>
+        /// Moves the specified vehicle the specified number of spaces (negative values move vertical
+        /// vehicles up and horizontal vehicles left). Check boolean property 'Solved' to see if the
+        /// move resulted in a victory.
+        /// </summary>
+        /// <param name="vehicleID">the ID of the Vehicle to move</param>
+        /// <param name="spaces">number of spaces to move (negative values move up/left)</param>
+        /// <returns>true if the move was successful/legal</returns>
+        public bool MoveVehicle(string vehicleID, int spaces)
+        {
+            return MoveVehicle(vehicleID, spaces, true);
+        }
+
+        // IF I DO DECIDE THAT SOLUTION MOVES AREN'T ALLOWED IF THE USER HAS MADE A MOVE (i.e. userMoveMade == true),
+        // THEN THERE IS NO NEED TO CHECK IF THE SOLUTION MOVE IS VALID IN MoveVehicle(). THIS ASSUMES
+        // THOUGH, THAT THE SOLUTION MOVES ARE VALID AND ENTERED CORRECTLY. THEREFORE, I SHOULD PROBABLY ONLY DO THIS
+        // IF ValidateConfigurationsFile INDEED CHECKS THAT SOLUTIONS ARE CORRECT.
+        public string SolutionNextMove()
+        {
+            // a solution move can only be executed if the grid has just been set or
+            // reset with no user moves made
+            if (!userMoveMade)
+            {
+                string[] moveData = solutionMoves[nextSolutionMove++].Trim().Split(' ');
+                string vID = moveData[0];
+                int spaces = Int32.Parse(moveData[1]);
+
+                if (nextSolutionMove == solutionMoves.Count) // reset
+                    nextSolutionMove = 0;
+                MoveVehicle(vID, spaces, false);
+                return vID;
+            }
+            return null;
         }
 
 
@@ -100,10 +248,11 @@ namespace RushHourModel
         /// </summary>
         /// <param name="vehicleID">the ID of the Vehicle to move</param>
         /// <param name="spaces">number of spaces to move (negative values move up/left)</param>
+        /// <param name="userMove">true if the move was made by the user, i.e. not a solution move</param>
         /// <returns>true if the move was successful/legal</returns>
-        public bool MoveVehicle(int vehicleID, int spaces)
+        private bool MoveVehicle(string vehicleID, int spaces, bool userMove)
         {
-            Vehicle v = vehicles[vehicleID - 1]; // get Vehicle being moved
+            Vehicle v = vehicles[vehicleID]; // get Vehicle being moved
 
             // Note: the technique used here is to delete/unmark one end of the Vehicle and add/mark
             // one cell ahead of the other end of the Vehicle, one space at a time. In other words,
@@ -155,7 +304,7 @@ namespace RushHourModel
                         grid[v.BackRow, v.BackCol++] = 0; // unmark left-most cell of Vehicle and scoot Vehicle one space right
                         grid[v.FrontRow, v.FrontCol] = 1; // mark the new right-most cell of the Vehicle
                     }
-                    if (vehicleID == 1 && v.FrontCol == (Columns - 1)) // check for victory
+                    if (vehicleID.Equals("X") && v.FrontCol == (Columns - 1)) // check for victory
                         Solved = true;
                 }
                 // move left
@@ -173,76 +322,11 @@ namespace RushHourModel
                     }
                 }
             }
+
+            if (userMove)
+                userMoveMade = true;
             return true;
-        }
-
-
-        /// <summary>
-        /// Validates the specified configurations file and throws exceptions if errors are encountered.
-        /// </summary>
-        /// <param name="filePath">path to the configurations file</param>
-        private void ValidateConfigurationsFile(string filePath)
-        {
-            configurations = new string[File.ReadLines(filePath).Count()];
-            int config = 1;
-            foreach (string line in File.ReadLines(filePath))
-            {
-                // check for correct number of semicolon-delimited sections
-                string[] sections = line.Split(';');
-                if (sections.Length != 2)
-                    throw new FileFormatException(string.Format("Expected 1 ';' (found {0}). File: '{1}', Line: {2}",
-                        sections.Length - 1, filePath, config));
-
-                // check section 1 (difficulty, number of rows, number of columns)
-                string[] settings = sections[0].Split(' ');
-                int diff, rows, cols;
-                if (settings.Length != 3 || !Int32.TryParse(settings[0], out diff) || !Int32.TryParse(settings[1], out rows) ||
-                    !Int32.TryParse(settings[2], out cols) || diff < 1 || rows < 1 || cols < 1)
-                    throw new FileFormatException(string.Format("Expected 3 positive integers. File: '{0}', Line: {1}, Section: '{2}'",
-                        filePath, config, sections[0]));
-
-                // check section 2 (vehicle encodings)
-                byte[,] tempGrid = new byte[rows, cols];
-                string[] vehicleEncodings = sections[1].Split(',');
-                if (vehicleEncodings.Length == 1 && vehicleEncodings[0].Equals(""))
-                    throw new FileFormatException(string.Format("One or more vehicle encodings required. File: '{0}', Line: {1}", filePath, config));
-
-                // validate each vehicle encoding (row, col, vertical/horizontal, length)
-                foreach (string ve in vehicleEncodings)
-                {
-                    string[] vehicleData = ve.Trim().Split(' ');
-                    int _row, _col, length;
-                    if (vehicleData.Length != 4 || !Int32.TryParse(vehicleData[0], out _row) || !Int32.TryParse(vehicleData[1], out _col) ||
-                        !Int32.TryParse(vehicleData[3], out length) || (!vehicleData[2].Equals("V") && !vehicleData[2].Equals("H")))
-                        throw new FileFormatException(string.Format("Expected vehicle encoding of the form 'D D (V|H) D' where D is a positive integer and the third element is a V or H. File: '{0}', Line: {1}, Encoding: '{2}'", filePath, config, ve));
-                    int row = _row - 1; // configs are one-indexed, not zero-indexed
-                    int col = _col - 1;
-                    bool vertical = vehicleData[2].Equals("V");
-
-                    if (row < 0 || col < 0 || length < 1 || (vertical && row + length > rows) || (!vertical && col + length > cols))
-                        throw new FileFormatException(string.Format("Vehicle position and/or length is invalid or out of range. File: '{0}', Line: {1}, Encoding: '{2}'", filePath, config, ve));
-
-                    // make sure vehicles don't overlap
-                    if (vertical)
-                        for (int i = 0; i < length; i++)
-                        {
-                            if (tempGrid[row + i, col] == 1)
-                                throw new FileFormatException(string.Format("Vehicle overlap. File: '{0}', Line: {1}, Encoding: '{2}'",
-                                    filePath, config, ve));
-                            tempGrid[row + i, col] = 1;
-                        }
-                    else
-                        for (int i = 0; i < length; i++)
-                        {
-                            if (tempGrid[row, col + i] == 1)
-                                throw new FileFormatException(string.Format("Vehicle overlap. File: '{0}', Line: {1}, Encoding: '{2}'",
-                                    filePath, config, ve));
-                            tempGrid[row, col + i] = 1;
-                        }                    
-                }
-                configurations[config++ - 1] = line; // configuration is valid, add to array
-            }
-        }
+        } 
     }
 }
 
