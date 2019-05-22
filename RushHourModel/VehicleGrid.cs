@@ -10,14 +10,13 @@ namespace RushHourModel
 {
     public class VehicleGrid
     {
-        //private readonly string configsFile;
         public byte[,] grid; //********************************* SET BACK TO PRIVATE **************************************************
         private string[] configurations;
         private List<string> solutionMoves = new List<string>(64);
         private int nextSolutionMove; // index into list above; keeps track of next solution move
 
         // BELOW BOOL ISN'T STRICTLY NECESSARY. ILLEGAL MOVES, REGARDLESS OF THE SOURCE, WON'T WORK.
-        private bool userMoveMade; // indicates the public MoveVehicle() has not been called since last grid set/reset
+        private bool userMoveMade, solutionMoveMade; // indicates the public MoveVehicle() has not been called since last grid set/reset
 
         public int Rows
         { get; private set; }
@@ -59,6 +58,9 @@ namespace RushHourModel
         private void ValidateConfigurationsFile(string filePath)
         {
             configurations = new string[File.ReadLines(filePath).Count()];
+            if (configurations.Length == 0)
+                throw new FileFormatException("Configurations file cannot be empty. File: '" + filePath + "'");
+
             int config = 1;
             foreach (string line in File.ReadLines(filePath))
             {
@@ -131,18 +133,28 @@ namespace RushHourModel
         }
 
 
-        // SOMETHING NEEDS TO BE DONE/DECIDED ABOUT GRID RESETS (SEE TODO-NOTES) ************************************************************
         /// <summary>
         /// Sets the grid to the specified configuration. Enter a negative value for a random configuration.
         /// </summary>
         /// <param name="config">configuration to set grid to (configs start at 1)</param>
         public void SetConfig(int config)
         {
+            if (config == 0) // INCLUDE THIS FOR RANDOM CONFIG? ***************************************************************************
+                return;
+
+            if (config > configurations.Length)
+                return;
+
+            if (config == CurrentConfig)
+                ResetConfig();
+            
             // check if random config is desired
             if (config < 0)
             {
                 Random rand = new Random();
                 config = rand.Next(configurations.Length) + 1;
+                while (config == CurrentConfig && configurations.Length > 1) // ensure random config doesn't equal the current one
+                    config = rand.Next(configurations.Length) + 1;
             }
             CurrentConfig = config;
 
@@ -165,8 +177,7 @@ namespace RushHourModel
             else
                 Array.Clear(grid, 0, grid.Length);
             string[] vehicleEncodings = sections[1].Split(',');
-            vehicles.Clear();  // THIS COULD POTENTIALLY BE OPTIMIZED SOMEHOW ON GRID RESETS (RESET THE VEHICLE POSITIONS).
-                               // IF IT IS A RESET, GET THE VEHICLE BY ITS ID AND RESET ITS ROW AND COLUMN. *IMPLEMENT THIS IN RESETCONFIG()*.
+            vehicles.Clear();
             foreach (string ve in vehicleEncodings)
             {
                 // parse the vehicle data
@@ -194,15 +205,51 @@ namespace RushHourModel
 
             nextSolutionMove = 0;
             userMoveMade = false;
+            solutionMoveMade = false;
             Solved = false; // configuration is now set and unsolved
         }
 
 
-        public void ResetConfig() // NOT FULLY IMPLEMENTED. WORK ON THIS. *****************************************************************
-        {
-            nextSolutionMove = 0;
-            userMoveMade = false;
-            Solved = false;
+        /// <summary>
+        /// Resets the grid to the current configuration.
+        /// </summary>
+        public void ResetConfig()
+        {            
+            // only reset if a move has been made
+            if (userMoveMade || solutionMoveMade)
+            {
+                // reset the Vehicle positions and the underlying grid
+                Array.Clear(grid, 0, grid.Length);
+                string[] sections = configurations[CurrentConfig - 1].Split(';');
+                string[] vehicleEncodings = sections[1].Split(',');
+                foreach (string ve in vehicleEncodings)
+                {
+                    // parse the vehicle data
+                    string[] vehicleData = ve.Trim().Split(' ');
+                    string id = vehicleData[0];
+                    int row = Int32.Parse(vehicleData[1]) - 1;
+                    int col = Int32.Parse(vehicleData[2]) - 1;
+                    Vehicle v = vehicles[id];                    
+
+                    // reset the Vehicle's position and mark the vehicle in the underlying grid
+                    if (v.Vertical)
+                    {
+                        v.BackRow = row;
+                        for (int i = 0; i < v.Length; i++)
+                            grid[row + i, col] = 1;
+                    }
+                    else
+                    {
+                        v.BackCol = col;
+                        for (int i = 0; i < v.Length; i++)
+                            grid[row, col + i] = 1;
+                    }
+                }                
+                nextSolutionMove = 0;
+                userMoveMade = false;
+                solutionMoveMade = false;
+                Solved = false;
+            }
         }
 
 
@@ -216,7 +263,10 @@ namespace RushHourModel
         /// <returns>true if the move was successful/legal</returns>
         public bool MoveVehicle(string vehicleID, int spaces)
         {
-            return MoveVehicle(vehicleID, spaces, true);
+            bool successful = MoveVehiclePrivate(vehicleID, spaces);
+            if (successful)
+                userMoveMade = true;
+            return successful;
         }
 
         // IF I DO DECIDE THAT SOLUTION MOVES AREN'T ALLOWED IF THE USER HAS MADE A MOVE (i.e. userMoveMade == true),
@@ -225,20 +275,20 @@ namespace RushHourModel
         // IF ValidateConfigurationsFile INDEED CHECKS THAT SOLUTIONS ARE CORRECT.
         public string SolutionNextMove()
         {
-            // a solution move can only be executed if the grid has just been set or
-            // reset with no user moves made
-            if (!userMoveMade)
-            {
-                string[] moveData = solutionMoves[nextSolutionMove++].Trim().Split(' ');
-                string vID = moveData[0];
-                int spaces = Int32.Parse(moveData[1]);
+            // a solution move can only be executed if the grid has just been set/reset with no user moves made
+            if (userMoveMade)
+                return null;
 
-                if (nextSolutionMove == solutionMoves.Count) // reset
-                    nextSolutionMove = 0;
-                MoveVehicle(vID, spaces, false);
-                return vID;
-            }
-            return null;
+            string[] moveData = solutionMoves[nextSolutionMove++].Trim().Split(' ');
+            string vID = moveData[0];
+            int spaces = Int32.Parse(moveData[1]);
+
+            if (nextSolutionMove == solutionMoves.Count) // reset
+                nextSolutionMove = 0;
+            bool successful = MoveVehiclePrivate(vID, spaces);
+            if (successful)
+                solutionMoveMade = true;
+            return vID;            
         }
 
 
@@ -248,9 +298,8 @@ namespace RushHourModel
         /// </summary>
         /// <param name="vehicleID">the ID of the Vehicle to move</param>
         /// <param name="spaces">number of spaces to move (negative values move up/left)</param>
-        /// <param name="userMove">true if the move was made by the user, i.e. not a solution move</param>
         /// <returns>true if the move was successful/legal</returns>
-        private bool MoveVehicle(string vehicleID, int spaces, bool userMove)
+        private bool MoveVehiclePrivate(string vehicleID, int spaces)
         {
             Vehicle v = vehicles[vehicleID]; // get Vehicle being moved
 
@@ -322,9 +371,6 @@ namespace RushHourModel
                     }
                 }
             }
-
-            if (userMove)
-                userMoveMade = true;
             return true;
         } 
     }

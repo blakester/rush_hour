@@ -22,52 +22,31 @@ namespace RushHour
     public partial class MainWindow : Window
     {
         private Border selected = null;
-        private Dictionary<Border, string> vehicleIDs;
-        private Dictionary<string, Border> borders;
+        private Dictionary<Border, string> vehicleIDs = new Dictionary<Border, string>(32);
+        private Dictionary<string, Border> borders = new Dictionary<string, Border>(32);
         private VehicleGrid grid;
         
         public MainWindow()
         {
             InitializeComponent();
             grid = new VehicleGrid("../../../configurations.txt", 1);
-            vehicleIDs = new Dictionary<Border, string>(grid.vehicles.Count * 2);
-            borders = new Dictionary<string, Border>(grid.vehicles.Count * 2);
+            SetGameGrid();
+        }
 
-            // set uiGrid rows and columns according to the configuration
+        private void SetGameGrid()
+        {
+            vehicleIDs.Clear();
+            borders.Clear();
+            gameGrid.Children.Clear();
+            gameGrid.RowDefinitions.Clear();
+            gameGrid.ColumnDefinitions.Clear();
+
+            // set gameGrid rows and columns according to the configuration
             for (int i = 0; i < grid.Rows; i++)
                 gameGrid.RowDefinitions.Add(new RowDefinition());
             for (int i = 0; i < grid.Columns; i++)
                 gameGrid.ColumnDefinitions.Add(new ColumnDefinition());
 
-            // THESE CAN BE USED TO CLEAR THE ROWS AND COLUMNS
-            //uiGrid.RowDefinitions.Clear();
-            //uiGrid.RowDefinitions.Clear();
-
-            //foreach (KeyValuePair<int, Vehicle> kv in grid.vehicles)
-            //{
-            //    Border vehicleBorder = new Border();
-            //    vehicleBorder.BorderThickness = new Thickness(10, 10, 10, 10);
-
-            //    if (kv.Key == 1)
-            //        vehicleBorder.Background = Brushes.Red;
-            //    else
-            //        vehicleBorder.Background = Brushes.Gray;
-
-            //    if (kv.Value.Vertical)
-            //        vehicleBorder.SetValue(Grid.RowSpanProperty, kv.Value.Length);
-            //    else
-            //        vehicleBorder.SetValue(Grid.ColumnSpanProperty, kv.Value.Length);
-
-            //    uiGrid.Children.Add(vehicleBorder);
-            //    vehicleBorder.MouseLeftButtonDown += new MouseButtonEventHandler(Border_MouseLeftButtonDown);
-                
-            //    Grid.SetRow(vehicleBorder, kv.Value.BackRow);
-            //    Grid.SetColumn(vehicleBorder, kv.Value.BackCol);
-
-            //    vehicleIDs.Add(vehicleBorder, kv.Key);
-            //}
-
-            //int vehicleID = 1;
             foreach (KeyValuePair<string, Vehicle> kv in grid.vehicles)
             {
                 string vID = kv.Key;
@@ -165,18 +144,23 @@ namespace RushHour
             }
         }
 
-        private void Button_Click(object sender, RoutedEventArgs e)
+        private void solutionMoveButton_Click(object sender, RoutedEventArgs e)
         {
             string movedVehicleID = grid.SolutionNextMove();
             if (movedVehicleID == null)
                 return;
+
             Vehicle movedVehicle = grid.vehicles[movedVehicleID];
             Border movedBorder = borders[movedVehicleID];
-
-
             Grid.SetRow(movedBorder, movedVehicle.BackRow);
             Grid.SetColumn(movedBorder, movedVehicle.BackCol);
         }
 
+        private void configButton_Click(object sender, RoutedEventArgs e)
+        {
+            int config = Int32.Parse(configEntryBox.Text);
+            grid.SetConfig(config);
+            SetGameGrid();            
+        }
     }
 }

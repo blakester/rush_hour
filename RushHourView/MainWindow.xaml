@@ -6,9 +6,9 @@
     <Grid x:Name="mainGrid">
         <Grid x:Name="gameGrid" Height="500" Width="500" ShowGridLines="True" VerticalAlignment="Bottom"></Grid>
         <Rectangle Fill="#FFF4F4F5" HorizontalAlignment="Left" Height="102" Stroke="Black" VerticalAlignment="Top" Width="517"/>
-        <Button Content="Next Solution Move" HorizontalAlignment="Left" VerticalAlignment="Top" Width="121" Margin="386,64,0,0" Click="Button_Click"/>
-        <Button Content="Set Config" HorizontalAlignment="Left" VerticalAlignment="Top" Width="75" Margin="10,64,0,0"/>
-        <TextBox HorizontalAlignment="Left" Height="23" Margin="100,61,0,0" TextWrapping="Wrap" Text="TextBox" VerticalAlignment="Top" Width="45" ToolTip="Configuration number (negative for random)"/>
+        <Button x:Name="solutionMoveButton" Content="Next Solution Move" HorizontalAlignment="Left" VerticalAlignment="Top" Width="121" Margin="386,64,0,0" Click="solutionMoveButton_Click"/>
+        <Button x:Name="configButton" Content="Set Config" HorizontalAlignment="Left" VerticalAlignment="Top" Width="75" Margin="10,64,0,0" Click="configButton_Click"/>
+        <TextBox x:Name="configEntryBox" HorizontalAlignment="Left" Height="20" Margin="100,64,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="29" ToolTip="Configuration number (negative for random)"/>
     </Grid>
 
 </Window>
