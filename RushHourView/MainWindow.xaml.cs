@@ -51,23 +51,25 @@ namespace RushHour
                 gameGrid.ColumnDefinitions.Add(new ColumnDefinition());
 
             // represent each Vehicle as a Border
-            foreach (KeyValuePair<string, Vehicle> kv in grid.vehicles)
+            //foreach (KeyValuePair<string, VehicleInfo> kv in grid.vehicles)
+            foreach (VehicleStruct vd in grid.GetVehicleStucts())
             {
-                string vID = kv.Key;
-                Vehicle v = kv.Value;
+                //string vID = kv.Key;
+                //VehicleInfo v = kv.Value;
                 Border vehicleBorder = new Border();
                 vehicleBorder.BorderThickness = new Thickness(8, 8, 8, 8);
                 vehicleBorder.CornerRadius = new CornerRadius(15);
-
-                if (vID.Equals("X"))
+                
+                //if (vID.Equals("X"))
+                if (vd.id.Equals("X"))
                     vehicleBorder.Background = Brushes.Red;
                 else
                     vehicleBorder.Background = Brushes.Gray;
 
-                if (v.Vertical)
-                    vehicleBorder.SetValue(Grid.RowSpanProperty, v.Length);
+                if (vd.vertical)
+                    vehicleBorder.SetValue(Grid.RowSpanProperty, vd.length);
                 else
-                    vehicleBorder.SetValue(Grid.ColumnSpanProperty, v.Length);
+                    vehicleBorder.SetValue(Grid.ColumnSpanProperty, vd.length);
 
                 gameGrid.Children.Add(vehicleBorder);
                 vehicleBorder.Focusable = true;
@@ -80,11 +82,11 @@ namespace RushHour
 
                 vehicleBorder.KeyDown += new KeyEventHandler(border_KeyDown);
 
-                Grid.SetRow(vehicleBorder, v.BackRow);
-                Grid.SetColumn(vehicleBorder, v.BackCol);
+                Grid.SetRow(vehicleBorder, vd.row);
+                Grid.SetColumn(vehicleBorder, vd.column);
                 
-                vehicleIDs.Add(vehicleBorder, vID);
-                borders.Add(vID, vehicleBorder);
+                vehicleIDs.Add(vehicleBorder, vd.id);
+                borders.Add(vd.id, vehicleBorder);
                 solutionMoveButton.IsEnabled = true;
             }
         }
@@ -119,8 +121,8 @@ namespace RushHour
 
         private void solutionMoveButton_Click(object sender, RoutedEventArgs e)
         {
-            string movedVehicleID = grid.SolutionNextMove();
-            //if (movedVehicleID == null)
+            VehicleStruct? movedVehicle = grid.SolutionNextMove();
+            //if (!movedVehicle.HasValue)
             //{
             //    //e.Handled = true;
             //    if (selected != null)
@@ -128,10 +130,14 @@ namespace RushHour
             //    return;
             //}
 
-            Vehicle movedVehicle = grid.vehicles[movedVehicleID];
-            Border movedBorder = borders[movedVehicleID];
-            Grid.SetRow(movedBorder, movedVehicle.BackRow);
-            Grid.SetColumn(movedBorder, movedVehicle.BackCol);            
+            //VehicleInfo movedVehicle = grid.vehicles[movedVehicleID];
+            //Border movedBorder = borders[movedVehicleID];
+            //Grid.SetRow(movedBorder, movedVehicle.Row);
+            //Grid.SetColumn(movedBorder, movedVehicle.Column);
+
+            Border movedBorder = borders[movedVehicle.Value.id];
+            Grid.SetRow(movedBorder, movedVehicle.Value.row);
+            Grid.SetColumn(movedBorder, movedVehicle.Value.column);
             //e.Handled = true;
             if (selected != null)
                 selected.Focus();

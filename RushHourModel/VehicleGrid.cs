@@ -16,7 +16,7 @@ namespace RushHourModel
         private int nextSolutionMove; // index into list above; keeps track of next solution move
 
         // BELOW BOOL ISN'T STRICTLY NECESSARY. ILLEGAL MOVES, REGARDLESS OF THE SOURCE, WON'T WORK.
-        private bool userMoveMade, solutionMoveMade; // indicates the public MoveVehicle() has not been called since last grid set/reset
+        private bool userMoveMade, solutionMoveMade; 
 
         public int Rows
         { get; private set; }
@@ -33,9 +33,9 @@ namespace RushHourModel
         public bool Solved
         { get; private set; }
 
-        // HOW TO DISALLOW EDITS TO VEHICLES BY THE VIEW? THERE SEEMS TO BE SOME ReadOnly C# THINGS I COULD USE BUT I DON'T
-        // KNOW EXACTLY HOW. OR I COULD RETURN A LIST OF STRUCTS THAT CONTAIN ALL THE NEEDED VEHICLE INFO (ID, VERTICAL, LENGTH, ROW, COLUMN).
-        public Dictionary<string, Vehicle> vehicles = new Dictionary<string, Vehicle>(32);
+        // HOW TO DISALLOW EDITS TO VEHICLES BY THE VIEW? IT SEEMS THAT READONLY ISN'T AN OPTION FOR A USER-DEFINED TYPE SUCH AS Vehicle. AN ALTERNATIVE WOULD BE TO SIMPLY HAVE A PUBLIC DICTIONARY OF VEHICLES THAT IS UPDATED ALONG WITH THE PRIVATE DICTIONARY BELOW. THE PUBLIC LIST NEED NOT CONTAIN Vehicle BUT SIMPLY A NEW TYPE WITH ALL THE NEEDED INFO (ID, VERTICAL, LENGTH, ROW, COLUMN).
+        private Dictionary<string, Vehicle> vehicles = new Dictionary<string, Vehicle>(32);
+        //public Dictionary<string, VehicleInfo> vehicles = new Dictionary<string, VehicleInfo>(32);
 
 
         /// <summary>
@@ -188,6 +188,7 @@ namespace RushHourModel
                 bool vertical = vehicleData[3].Equals("V");
                 int length = Int32.Parse(vehicleData[4]);             
                 vehicles.Add(id, new Vehicle(row, col, vertical, length));
+                //vehicles.Add(id, new VehicleInfo(row, col, vertical, length));
 
                 // mark the vehicle in the underlying grid
                 if (vertical)
@@ -229,18 +230,21 @@ namespace RushHourModel
                     string id = vehicleData[0];
                     int row = Int32.Parse(vehicleData[1]) - 1;
                     int col = Int32.Parse(vehicleData[2]) - 1;
-                    Vehicle v = vehicles[id];                    
+                    Vehicle v = vehicles[id];
+                    //VehicleInfo vi = vehicles[id];
 
                     // reset the Vehicle's position and mark the vehicle in the underlying grid
                     if (v.Vertical)
                     {
                         v.BackRow = row;
+                        //vi.Row = row;
                         for (int i = 0; i < v.Length; i++)
                             grid[row + i, col] = 1;
                     }
                     else
                     {
                         v.BackCol = col;
+                        //vi.Column = col;
                         for (int i = 0; i < v.Length; i++)
                             grid[row, col + i] = 1;
                     }
@@ -273,7 +277,7 @@ namespace RushHourModel
         // THEN THERE IS NO NEED TO CHECK IF THE SOLUTION MOVE IS VALID IN MoveVehicle(). THIS ASSUMES
         // THOUGH, THAT THE SOLUTION MOVES ARE VALID AND ENTERED CORRECTLY. THEREFORE, I SHOULD PROBABLY ONLY DO THIS
         // IF ValidateConfigurationsFile INDEED CHECKS THAT SOLUTIONS ARE CORRECT.
-        public string SolutionNextMove()
+        public VehicleStruct? SolutionNextMove()
         {
             // a solution move can only be executed if the grid has just been set/reset with no user moves made
             if (userMoveMade)
@@ -283,12 +287,12 @@ namespace RushHourModel
             string vID = moveData[0];
             int spaces = Int32.Parse(moveData[1]);
 
-            if (nextSolutionMove == solutionMoves.Count) // reset
+            if (nextSolutionMove == solutionMoves.Count) // reset // NOT BIG DEAL, BUT THIS ALLOWS MOVES AFTER VICTORY
                 nextSolutionMove = 0;
-            bool successful = MoveVehiclePrivate(vID, spaces);
-            if (successful)
+            if (MoveVehiclePrivate(vID, spaces)) // THIS SHOULD ALWAYS BE SUCCESSFUL IF SOLUTION MOVES ARE VALIDATED
                 solutionMoveMade = true;
-            return vID;            
+            Vehicle movedVehicle = vehicles[vID];
+            return new VehicleStruct(vID, movedVehicle.BackRow, movedVehicle.BackCol, movedVehicle.Vertical, movedVehicle.Length);            
         }
 
 
@@ -372,7 +376,58 @@ namespace RushHourModel
                 }
             }
             return true;
-        } 
+        }
+
+
+        public VehicleStruct[] GetVehicleStucts()
+        {
+            VehicleStruct[] vs = new VehicleStruct[vehicles.Count];
+            int i = 0;
+            foreach (KeyValuePair<string, Vehicle> kv in vehicles)
+            {
+                Vehicle v = kv.Value;
+                vs[i++] = new VehicleStruct(kv.Key, v.BackRow, v.BackCol, v.Vertical, v.Length);
+            }
+            return vs;
+        }
+
     }
+
+    public struct VehicleStruct
+    {
+        public readonly string id;
+        public readonly int row, column, length;
+        public readonly bool vertical;        
+
+        public VehicleStruct(string id, int row, int column, bool vertical, int length)
+        {
+            this.id = id;
+            this.row = row;
+            this.column = column;
+            this.vertical = vertical;
+            this.length = length;
+        }
+    }
+
+    //public class VehicleInfo
+    //{
+    //    public int Row
+    //    { get; set; }
+
+    //    public int Column
+    //    { get; set; }
+
+    //    public readonly int Length;
+
+    //    public readonly bool Vertical;
+
+    //    public VehicleInfo(int row, int column, bool vertical, int length)
+    //    {
+    //        Row = row;
+    //        Column = column;
+    //        Vertical = vertical;
+    //        Length = length;
+    //    }
+    //}
 }
 
