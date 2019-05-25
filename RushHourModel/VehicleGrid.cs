@@ -14,6 +14,7 @@ namespace RushHourModel
         private string[] configurations;
         private List<string> solutionMoves = new List<string>(64);
         private int nextSolutionMove; // index into list above; keeps track of next solution move
+        private bool solved;
 
         // BELOW BOOL ISN'T STRICTLY NECESSARY. ILLEGAL MOVES, REGARDLESS OF THE SOURCE, WON'T WORK.
         private bool userMoveMade, solutionMoveMade; 
@@ -31,7 +32,10 @@ namespace RushHourModel
         { get; private set; }
 
         public bool Solved
-        { get; private set; }
+        { 
+            get { return solved; }
+            private set { solved = value; }
+        }
 
         // HOW TO DISALLOW EDITS TO VEHICLES BY THE VIEW? IT SEEMS THAT READONLY ISN'T AN OPTION FOR A USER-DEFINED TYPE SUCH AS Vehicle. AN ALTERNATIVE WOULD BE TO SIMPLY HAVE A PUBLIC DICTIONARY OF VEHICLES THAT IS UPDATED ALONG WITH THE PRIVATE DICTIONARY BELOW. THE PUBLIC LIST NEED NOT CONTAIN Vehicle BUT SIMPLY A NEW TYPE WITH ALL THE NEEDED INFO (ID, VERTICAL, LENGTH, ROW, COLUMN).
         private Dictionary<string, Vehicle> vehicles = new Dictionary<string, Vehicle>(32);
@@ -70,7 +74,7 @@ namespace RushHourModel
                     throw new FileFormatException(string.Format("Expected 2 ';' (found {0}). File: '{1}', Line: {2}",
                         sections.Length - 1, filePath, config));
 
-                // Check section 1 (difficulty, number of rows, number of columns)
+                // ~~~ Check section 1 ~~~ (difficulty, number of rows, number of columns)
                 string[] settings = sections[0].Split(' ');
                 int diff, rows, cols;
                 if (settings.Length != 3 || !Int32.TryParse(settings[0], out diff) || !Int32.TryParse(settings[1], out rows) ||
@@ -78,11 +82,16 @@ namespace RushHourModel
                     throw new FileFormatException(string.Format("Expected 3 positive integers. File: '{0}', Line: {1}, Section: '{2}'",
                         filePath, config, sections[0]));
 
-                // Check section 2 (vehicle encodings)
+                // ~~~ Check section 2 ~~~ (vehicle encodings)
                 byte[,] tempGrid = new byte[rows, cols];
                 string[] vehicleEncodings = sections[1].Split(',');
                 if (vehicleEncodings.Length == 1 && vehicleEncodings[0].Equals(""))
                     throw new FileFormatException(string.Format("One or more vehicle encodings required. File: '{0}', Line: {1}", filePath, config));
+
+                // the Vehicles need to be stored so the solution moves can be validated
+                // IT'D PROBABLY BE MORE EFFICIENT TO USE A SINGLE DICTIONARY AND GRID FOR THE ENTIRE FILE (PERHAPS THE MAIN ONES)
+                // BUT IF I END UP MULTI-THREADING THE VALIDATION, EACH THREAD WILL NEED IT'S OWN DICTIONARY AND GRID.
+                Dictionary<string, Vehicle> tempVehicles = new Dictionary<string, Vehicle>(vehicleEncodings.Length * 2);
 
                 // validate each vehicle encoding (ID, row, col, vertical/horizontal, length)
                 foreach (string ve in vehicleEncodings)
@@ -116,17 +125,27 @@ namespace RushHourModel
                                     filePath, config, ve));
                             tempGrid[row, col + i] = 1;
                         }
+                    tempVehicles.Add(vehicleData[0], new Vehicle(row, col, vertical, length));
                 }
 
-                // Check section 3 (solution moves)
+                // ~~~ Check section 3 ~~~ (solution moves)
+                bool victory = false;
                 string[] solutionMoves = sections[2].Split(',');
                 foreach (string sm in solutionMoves)
                 {
+                    // validate the format
                     string[] moveData = sm.Trim().Split(' ');
                     int spaces;
                     if (moveData.Length != 2 || !Int32.TryParse(moveData[1], out spaces))
                         throw new FileFormatException(string.Format("Expected solution move of the form '$ I' where $ is a string and I is an integer. File: '{0}', Line: {1}, Move: '{2}'", filePath, config, sm));
+
+                    // execute the move
+                    MoveVehiclePrivate(moveData[0], spaces, tempGrid, tempVehicles, out victory);
                 }
+
+                // make sure the moves resulted in a victory
+                if (!victory)
+                    throw new FileFormatException(string.Format("Solution moves did not solve configuration. File: '{0}', Line: {1}", filePath, config));
 
                 configurations[config++ - 1] = line; // configuration is valid, add to array
             }
@@ -267,7 +286,7 @@ namespace RushHourModel
         /// <returns>true if the move was successful/legal</returns>
         public bool MoveVehicle(string vehicleID, int spaces)
         {
-            bool successful = MoveVehiclePrivate(vehicleID, spaces);
+            bool successful = MoveVehiclePrivate(vehicleID, spaces, grid, vehicles, out solved);
             if (successful)
                 userMoveMade = true;
             return successful;
@@ -287,7 +306,7 @@ namespace RushHourModel
             string vID = moveData[0];
             int spaces = Int32.Parse(moveData[1]);
 
-            if (MoveVehiclePrivate(vID, spaces)) // THIS SHOULD ALWAYS BE SUCCESSFUL IF SOLUTION MOVES ARE VALIDATED
+            if (MoveVehiclePrivate(vID, spaces, grid, vehicles, out solved)) // THIS SHOULD ALWAYS BE SUCCESSFUL IF SOLUTION MOVES ARE VALIDATED
                 solutionMoveMade = true;
             Vehicle movedVehicle = vehicles[vID];
             return new VehicleStruct(vID, movedVehicle.BackRow, movedVehicle.BackCol, movedVehicle.Vertical, movedVehicle.Length);            
@@ -303,7 +322,7 @@ namespace RushHourModel
             string vID = moveData[0];
             int spaces = Int32.Parse(moveData[1]) * -1;
 
-            if (MoveVehiclePrivate(vID, spaces))
+            if (MoveVehiclePrivate(vID, spaces, grid, vehicles, out solved))
                 solutionMoveMade = true;
             Vehicle movedVehicle = vehicles[vID];
             return new VehicleStruct(vID, movedVehicle.BackRow, movedVehicle.BackCol, movedVehicle.Vertical, movedVehicle.Length);
@@ -317,9 +336,12 @@ namespace RushHourModel
         /// <param name="vehicleID">the ID of the Vehicle to move</param>
         /// <param name="spaces">number of spaces to move (negative values move up/left)</param>
         /// <returns>true if the move was successful/legal</returns>
-        private bool MoveVehiclePrivate(string vehicleID, int spaces)
+        private bool MoveVehiclePrivate(string vehicleID, int spaces, byte[,] someGrid, Dictionary<string, Vehicle> someDict, out bool solved)
         {
-            Vehicle v = vehicles[vehicleID]; // get Vehicle being moved
+            Vehicle v = someDict[vehicleID]; // get Vehicle being moved
+            int rows = someGrid.GetLength(0);
+            int columns = someGrid.GetLength(1);
+            solved = false;
 
             // Note: the technique used here is to delete/unmark one end of the Vehicle and add/mark
             // one cell ahead of the other end of the Vehicle, one space at a time. In other words,
@@ -330,15 +352,15 @@ namespace RushHourModel
                 // move down
                 if (spaces >= 0)
                 {
-                    if (v.FrontRow + spaces >= Rows) // check inbounds
+                    if (v.FrontRow + spaces >= rows) // check inbounds
                         return false;
                     for (int i = v.FrontRow + 1; i <= v.FrontRow + spaces; i++) // check spaces below are empty
-                        if (grid[i, v.FrontCol] == 1)
+                        if (someGrid[i, v.FrontCol] == 1)
                             return false;
                     for (int i = 0; i < spaces; i++)
                     {
-                        grid[v.BackRow++, v.BackCol] = 0; // unmark top-most cell of Vehicle and scoot Vehicle one space down
-                        grid[v.FrontRow, v.FrontCol] = 1; // mark the new bottom-most cell of the Vehicle
+                        someGrid[v.BackRow++, v.BackCol] = 0; // unmark top-most cell of Vehicle and scoot Vehicle one space down
+                        someGrid[v.FrontRow, v.FrontCol] = 1; // mark the new bottom-most cell of the Vehicle
                     }
                 }
                 // move up
@@ -347,12 +369,12 @@ namespace RushHourModel
                     if (v.BackRow + spaces < 0) // check inbounds
                         return false;
                     for (int i = v.BackRow - 1; i >= v.BackRow + spaces; i--) // check spaces above are empty
-                        if (grid[i, v.BackCol] == 1)
+                        if (someGrid[i, v.BackCol] == 1)
                             return false;
                     for (int i = spaces; i < 0; i++)
                     {
-                        grid[v.FrontRow, v.FrontCol] = 0; // unmark bottom-most cell of Vehicle
-                        grid[--v.BackRow, v.BackCol] = 1; // scoot Vehicle one space up and mark the space                
+                        someGrid[v.FrontRow, v.FrontCol] = 0; // unmark bottom-most cell of Vehicle
+                        someGrid[--v.BackRow, v.BackCol] = 1; // scoot Vehicle one space up and mark the space                
                     }
                 }
             }
@@ -361,18 +383,18 @@ namespace RushHourModel
                 // move right
                 if (spaces >= 0)
                 {
-                    if (v.FrontCol + spaces >= Columns)
+                    if (v.FrontCol + spaces >= columns)
                         return false;
                     for (int i = v.FrontCol + 1; i <= v.FrontCol + spaces; i++) // check spaces ahead are empty
-                        if (grid[v.FrontRow, i] == 1)
+                        if (someGrid[v.FrontRow, i] == 1)
                             return false;
                     for (int i = 0; i < spaces; i++)
                     {
-                        grid[v.BackRow, v.BackCol++] = 0; // unmark left-most cell of Vehicle and scoot Vehicle one space right
-                        grid[v.FrontRow, v.FrontCol] = 1; // mark the new right-most cell of the Vehicle
+                        someGrid[v.BackRow, v.BackCol++] = 0; // unmark left-most cell of Vehicle and scoot Vehicle one space right
+                        someGrid[v.FrontRow, v.FrontCol] = 1; // mark the new right-most cell of the Vehicle
                     }
-                    if (vehicleID.Equals("X") && v.FrontCol == (Columns - 1)) // check for victory
-                        Solved = true;
+                    if (vehicleID.Equals("X") && v.FrontCol == (columns - 1)) // check for victory
+                        solved = true;
                 }
                 // move left
                 else
@@ -380,12 +402,12 @@ namespace RushHourModel
                     if (v.BackCol + spaces < 0)
                         return false;
                     for (int i = v.BackCol - 1; i >= v.BackCol + spaces; i--) // check spaces behind are empty
-                        if (grid[v.BackRow, i] == 1)
+                        if (someGrid[v.BackRow, i] == 1)
                             return false;
                     for (int i = spaces; i < 0; i++)
                     {
-                        grid[v.FrontRow, v.FrontCol] = 0; // unmark right-most cell of Vehicle
-                        grid[v.BackRow, --v.BackCol] = 1; // scoot Vehicle one space left and mark the space                       
+                        someGrid[v.FrontRow, v.FrontCol] = 0; // unmark right-most cell of Vehicle
+                        someGrid[v.BackRow, --v.BackCol] = 1; // scoot Vehicle one space left and mark the space                       
                     }
                 }
             }
