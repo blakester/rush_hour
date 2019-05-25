@@ -23,6 +23,7 @@
         <Grid x:Name="gameGrid" Height="500" Width="500" ShowGridLines="True" VerticalAlignment="Bottom"></Grid>
         <Rectangle x:Name="controlsRectangle" Fill="#FFF4F4F5" HorizontalAlignment="Left" Height="102" Stroke="Black" VerticalAlignment="Top" Width="517"/>
         <Button x:Name="solutionMoveButton" Content="Next Solution Move" HorizontalAlignment="Left" VerticalAlignment="Top" Width="auto" Padding="3" Margin="386,64,0,0" Click="solutionMoveButton_Click"/>
+        <Button x:Name="solutionUndoButton" Content="Undo Solution Move" HorizontalAlignment="Left" VerticalAlignment="Top" Width="auto" Padding="3" Margin="386,35,0,0" Click="solutionMoveButton_Click"/>
         <Button x:Name="configButton" Content="Set/Reset Config" HorizontalAlignment="Left" VerticalAlignment="Top" Width="auto" Padding="3" Margin="10,64,0,0" Click="configButton_Click"/>
         <TextBox x:Name="configEntryBox" HorizontalAlignment="Left" Height="20" Margin="128,68,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="29" ToolTip="Configuration number (negative for random)"/>
     </Grid>

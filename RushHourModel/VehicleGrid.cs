@@ -70,7 +70,7 @@ namespace RushHourModel
                     throw new FileFormatException(string.Format("Expected 2 ';' (found {0}). File: '{1}', Line: {2}",
                         sections.Length - 1, filePath, config));
 
-                // check section 1 (difficulty, number of rows, number of columns)
+                // Check section 1 (difficulty, number of rows, number of columns)
                 string[] settings = sections[0].Split(' ');
                 int diff, rows, cols;
                 if (settings.Length != 3 || !Int32.TryParse(settings[0], out diff) || !Int32.TryParse(settings[1], out rows) ||
@@ -78,7 +78,7 @@ namespace RushHourModel
                     throw new FileFormatException(string.Format("Expected 3 positive integers. File: '{0}', Line: {1}, Section: '{2}'",
                         filePath, config, sections[0]));
 
-                // check section 2 (vehicle encodings)
+                // Check section 2 (vehicle encodings)
                 byte[,] tempGrid = new byte[rows, cols];
                 string[] vehicleEncodings = sections[1].Split(',');
                 if (vehicleEncodings.Length == 1 && vehicleEncodings[0].Equals(""))
@@ -91,7 +91,7 @@ namespace RushHourModel
                     int _row, _col, length;
                     if (vehicleData.Length != 5 || !Int32.TryParse(vehicleData[1], out _row) || !Int32.TryParse(vehicleData[2], out _col) ||
                         !Int32.TryParse(vehicleData[4], out length) || (!vehicleData[3].Equals("V") && !vehicleData[3].Equals("H")))
-                        throw new FileFormatException(string.Format("Expected vehicle encoding of the form '$ D D (V|H) D' where $ is a string, D is a positive integer, and the fourth element is a V or H. File: '{0}', Line: {1}, Encoding: '{2}'", filePath, config, ve));
+                        throw new FileFormatException(string.Format("Expected vehicle encoding of the form '$ I I (V|H) I' where $ is a string, I is a positive integer, and the fourth element is a V or H. File: '{0}', Line: {1}, Encoding: '{2}'", filePath, config, ve));
                     int row = _row - 1; // change row and col to zero-indexed
                     int col = _col - 1;
                     bool vertical = vehicleData[3].Equals("V");
@@ -118,14 +118,14 @@ namespace RushHourModel
                         }
                 }
 
-                // check section 3 (solution moves)
+                // Check section 3 (solution moves)
                 string[] solutionMoves = sections[2].Split(',');
                 foreach (string sm in solutionMoves)
                 {
                     string[] moveData = sm.Trim().Split(' ');
                     int spaces;
                     if (moveData.Length != 2 || !Int32.TryParse(moveData[1], out spaces))
-                        throw new FileFormatException(string.Format("Expected solution move of the form '$ D' where $ is a string and D is an integer. File: '{0}', Line: {1}, Move: '{2}'", filePath, config, sm));
+                        throw new FileFormatException(string.Format("Expected solution move of the form '$ I' where $ is a string and I is an integer. File: '{0}', Line: {1}, Move: '{2}'", filePath, config, sm));
                 }
 
                 configurations[config++ - 1] = line; // configuration is valid, add to array
@@ -277,22 +277,36 @@ namespace RushHourModel
         // THEN THERE IS NO NEED TO CHECK IF THE SOLUTION MOVE IS VALID IN MoveVehicle(). THIS ASSUMES
         // THOUGH, THAT THE SOLUTION MOVES ARE VALID AND ENTERED CORRECTLY. THEREFORE, I SHOULD PROBABLY ONLY DO THIS
         // IF ValidateConfigurationsFile INDEED CHECKS THAT SOLUTIONS ARE CORRECT.
-        public VehicleStruct? SolutionNextMove()
+        public VehicleStruct? NextSolutionMove()
         {
             // a solution move can only be executed if the grid has just been set/reset with no user moves made
-            if (userMoveMade)
+            if (userMoveMade || nextSolutionMove == solutionMoves.Count)
                 return null;
 
             string[] moveData = solutionMoves[nextSolutionMove++].Trim().Split(' ');
             string vID = moveData[0];
             int spaces = Int32.Parse(moveData[1]);
 
-            if (nextSolutionMove == solutionMoves.Count) // reset // NOT BIG DEAL, BUT THIS ALLOWS MOVES AFTER VICTORY
-                nextSolutionMove = 0;
             if (MoveVehiclePrivate(vID, spaces)) // THIS SHOULD ALWAYS BE SUCCESSFUL IF SOLUTION MOVES ARE VALIDATED
                 solutionMoveMade = true;
             Vehicle movedVehicle = vehicles[vID];
             return new VehicleStruct(vID, movedVehicle.BackRow, movedVehicle.BackCol, movedVehicle.Vertical, movedVehicle.Length);            
+        }
+
+
+        public VehicleStruct? UndoSolutionMove()
+        {
+            if (userMoveMade || nextSolutionMove == 0)
+                return null;
+
+            string[] moveData = solutionMoves[--nextSolutionMove].Trim().Split(' ');
+            string vID = moveData[0];
+            int spaces = Int32.Parse(moveData[1]) * -1;
+
+            if (MoveVehiclePrivate(vID, spaces))
+                solutionMoveMade = true;
+            Vehicle movedVehicle = vehicles[vID];
+            return new VehicleStruct(vID, movedVehicle.BackRow, movedVehicle.BackCol, movedVehicle.Vertical, movedVehicle.Length);
         }
 
 

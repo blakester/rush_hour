@@ -33,7 +33,7 @@ namespace RushHour
             grid = new VehicleGrid("../../../configurations.txt", initialConfig);
             configEntryBox.Text = initialConfig.ToString();
             SetGameGrid();
-            //Panel.SetZIndex(solutionMoveButton, -1);
+            //Panel.SetZIndex(solutionMoveButton, -1); // MAY BE USEFUL FOR VEHEICLES/BORDERS TO SIT ABOVE A GRID IMAGE
         }
 
         private void SetGameGrid()
@@ -121,24 +121,24 @@ namespace RushHour
 
         private void solutionMoveButton_Click(object sender, RoutedEventArgs e)
         {
-            VehicleStruct? movedVehicle = grid.SolutionNextMove();
-            //if (!movedVehicle.HasValue)
-            //{
-            //    //e.Handled = true;
-            //    if (selected != null)
-            //        selected.Focus();
-            //    return;
-            //}
+            VehicleStruct? movedVehicle;
+            if (((Button)sender).Equals(solutionMoveButton))
+                movedVehicle = grid.NextSolutionMove();
+            else
+                movedVehicle = grid.UndoSolutionMove(); // GET RID OF? CAN'T THINK OF REASONABLE USE-CASE.
 
-            //VehicleInfo movedVehicle = grid.vehicles[movedVehicleID];
-            //Border movedBorder = borders[movedVehicleID];
-            //Grid.SetRow(movedBorder, movedVehicle.Row);
-            //Grid.SetColumn(movedBorder, movedVehicle.Column);
+            if (movedVehicle.HasValue) // HANDLE NULL VehicleStruct (I.E. WHEN THE MOVE CAN'T BE MADE)
+            {
+                VehicleStruct mv = movedVehicle.Value;
+                Border movedBorder = borders[mv.id];
+                Grid.SetRow(movedBorder, mv.row);
+                Grid.SetColumn(movedBorder, mv.column);
 
-            Border movedBorder = borders[movedVehicle.Value.id];
-            Grid.SetRow(movedBorder, movedVehicle.Value.row);
-            Grid.SetColumn(movedBorder, movedVehicle.Value.column);
-            //e.Handled = true;
+                // disable button if puzzle is solved
+                if (grid.Solved)
+                    solutionMoveButton.IsEnabled = false;
+            }
+
             if (selected != null)
                 selected.Focus();
         }
