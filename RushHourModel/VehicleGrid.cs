@@ -11,12 +11,13 @@ namespace RushHourModel
 {
     public class VehicleGrid
     {
-        public byte[,] grid; //********************************* SET BACK TO PRIVATE **************************************************
+        private byte[,] grid;
         private string[] configurations;
         private List<string> solutionMoves = new List<string>(64);
         private int nextSolutionMove; // index into list above; keeps track of next solution move
         private bool solved;
 
+        // BELOW ARE USED FOR MULTI-THREADED VALIDATION, BUT ARE THEY NEEDED?
         private Object errorsLock = new Object();
         private List<string> errors = new List<string>(5);
 
@@ -43,7 +44,6 @@ namespace RushHourModel
 
         // HOW TO DISALLOW EDITS TO VEHICLES BY THE VIEW? IT SEEMS THAT READONLY ISN'T AN OPTION FOR A USER-DEFINED TYPE SUCH AS Vehicle. AN ALTERNATIVE WOULD BE TO SIMPLY HAVE A PUBLIC DICTIONARY OF VEHICLES THAT IS UPDATED ALONG WITH THE PRIVATE DICTIONARY BELOW. THE PUBLIC LIST NEED NOT CONTAIN Vehicle BUT SIMPLY A NEW TYPE WITH ALL THE NEEDED INFO (ID, VERTICAL, LENGTH, ROW, COLUMN).
         private Dictionary<string, Vehicle> vehicles = new Dictionary<string, Vehicle>(32);
-        //public Dictionary<string, VehicleInfo> vehicles = new Dictionary<string, VehicleInfo>(32);
 
 
         /// <summary>
@@ -54,7 +54,7 @@ namespace RushHourModel
         /// <param name="initialConfig">configuration to set grid to (configs start at 1)</param>
         public VehicleGrid(string configurationsFilePath, int initialConfig)
         {
-            ValidateConfigurationsFile_MltThrd(configurationsFilePath);            
+            ValidateConfigurationsFile(configurationsFilePath);            
             SetConfig(initialConfig);            
         }
 
@@ -70,7 +70,7 @@ namespace RushHourModel
                 throw new FileFormatException("Configurations file cannot be empty. File: '" + filePath + "'");
 
             Dictionary<string, Vehicle> tempVehicles = new Dictionary<string, Vehicle>(32);
-            byte[,] tempGrid = new byte[6, 6]; // assume this size; change if needed
+            byte[,] tempGrid = new byte[6, 6]; // assume a 6X6 grid; change if needed
 
             int config = 1;
             foreach (string line in File.ReadLines(filePath))
@@ -169,45 +169,37 @@ namespace RushHourModel
 
 
 
-
+        // THIS SEEMS TO BE SLOWER THAN THE SINGLE-THREADED VERSION. PERHAPS USING AN IDEAL/DYNAMIC NUMBER OF THREADS
+        // EACH WOULD HELP, BUT I DOUBT IT. THIS MIGHT ONLY COME IN HANDY IF YOU WERE PROCESSING A HUGE CONFIGURATIONS FILE,
+        // PERHAPS HUNDREDS OR EVEN THOUSANDS OF LINES. HOWEVER, IF YOU REMOVE THE CountdownEvent, THIS IS INDEED VERY FAST,
+        // BUT YOU'D HAVE TO GENERATE SOME SORT OF EVENT TO NOTIFY THE VIEW THAT A CONFIG WAS BAD SINCE THIS WOULD BECOME
+        // AN ASYNCHRONOUS METHOD.
         public void ValidateConfigurationsFile_MltThrd(string filePath) // ******* SWITCH BACK TO PRIVATE **********
         {
             configurations = new string[File.ReadLines(filePath).Count()];
             if (configurations.Length == 0)
                 throw new FileFormatException("Configurations file cannot be empty. File: '" + filePath + "'");
 
-            int threads = 4; // CALCULATE THIS BASED ON THE ENVIRONMENT AND DIVIDE ACCORDINGLY? N/T-> LINES PER THREAD, N%T-> EXTRA LINES TO TACK ON TO LAST THREAD
+            int threads = 4; // CALCULATE THIS BASED ON THE ENVIRONMENT?
+            int linesPerThread = configurations.Length / threads;
+            int linesRemainder = configurations.Length % threads;
+            int start = 0;
+            int end = 0;
             string[] unValidatedConfigs = File.ReadLines(filePath).ToArray(); // JUST USE GLOBAL 'configurations' INSTEAD?
 
             using (var countdownEvent = new CountdownEvent(threads))
             {
-
-                ThreadPool.QueueUserWorkItem(
-                        x =>
-                        {
-                            ValidateConfigs(unValidatedConfigs, 0, 64, filePath);
-                            countdownEvent.Signal();
-                        });
-
-                ThreadPool.QueueUserWorkItem(
-                        x =>
-                        {
-                            ValidateConfigs(unValidatedConfigs, 64, 128, filePath);
-                            countdownEvent.Signal();
-                        });
-                ThreadPool.QueueUserWorkItem(
-                        x =>
-                        {
-                            ValidateConfigs(unValidatedConfigs, 128, 192, filePath);
-                            countdownEvent.Signal();
-                        });
-                ThreadPool.QueueUserWorkItem(
-                        x =>
-                        {
-                            ValidateConfigs(unValidatedConfigs, 192, 256, filePath);
-                            countdownEvent.Signal();
-                        });
-
+                for (int i = 0; i < threads; i++)
+                {
+                    end += (i == threads - 1) ? linesPerThread + linesRemainder : linesPerThread;
+                    ThreadPool.QueueUserWorkItem(
+                            x =>
+                            {
+                                ValidateConfigs(unValidatedConfigs, start, end, filePath);
+                                countdownEvent.Signal();
+                            });
+                    start = end;
+                }
                 countdownEvent.Wait();
             }
         }
@@ -412,7 +404,6 @@ namespace RushHourModel
                 bool vertical = vehicleData[3].Equals("V");
                 int length = Int32.Parse(vehicleData[4]);             
                 vehicles.Add(id, new Vehicle(row, col, vertical, length));
-                //vehicles.Add(id, new VehicleInfo(row, col, vertical, length));
 
                 // mark the vehicle in the underlying grid
                 if (vertical)
@@ -455,20 +446,17 @@ namespace RushHourModel
                     int row = Int32.Parse(vehicleData[1]) - 1;
                     int col = Int32.Parse(vehicleData[2]) - 1;
                     Vehicle v = vehicles[id];
-                    //VehicleInfo vi = vehicles[id];
 
                     // reset the Vehicle's position and mark the vehicle in the underlying grid
                     if (v.Vertical)
                     {
                         v.BackRow = row;
-                        //vi.Row = row;
                         for (int i = 0; i < v.Length; i++)
                             grid[row + i, col] = 1;
                     }
                     else
                     {
                         v.BackCol = col;
-                        //vi.Column = col;
                         for (int i = 0; i < v.Length; i++)
                             grid[row, col + i] = 1;
                     }
@@ -649,26 +637,5 @@ namespace RushHourModel
             this.length = length;
         }
     }
-
-    //public class VehicleInfo
-    //{
-    //    public int Row
-    //    { get; set; }
-
-    //    public int Column
-    //    { get; set; }
-
-    //    public readonly int Length;
-
-    //    public readonly bool Vertical;
-
-    //    public VehicleInfo(int row, int column, bool vertical, int length)
-    //    {
-    //        Row = row;
-    //        Column = column;
-    //        Vertical = vertical;
-    //        Length = length;
-    //    }
-    //}
 }
 
