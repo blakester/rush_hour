@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.Threading;
 
 namespace RushHourModel
 {
@@ -15,6 +16,9 @@ namespace RushHourModel
         private List<string> solutionMoves = new List<string>(64);
         private int nextSolutionMove; // index into list above; keeps track of next solution move
         private bool solved;
+
+        private Object errorsLock = new Object();
+        private List<string> errors = new List<string>(5);
 
         // BELOW BOOL ISN'T STRICTLY NECESSARY. ILLEGAL MOVES, REGARDLESS OF THE SOURCE, WON'T WORK.
         private bool userMoveMade, solutionMoveMade; 
@@ -50,8 +54,8 @@ namespace RushHourModel
         /// <param name="initialConfig">configuration to set grid to (configs start at 1)</param>
         public VehicleGrid(string configurationsFilePath, int initialConfig)
         {
-            ValidateConfigurationsFile(configurationsFilePath);
-            SetConfig(initialConfig);
+            ValidateConfigurationsFile_MltThrd(configurationsFilePath);            
+            SetConfig(initialConfig);            
         }
 
 
@@ -59,11 +63,14 @@ namespace RushHourModel
         /// Validates the specified configurations file and throws exceptions if errors are encountered.
         /// </summary>
         /// <param name="filePath">path to the configurations file</param>
-        private void ValidateConfigurationsFile(string filePath)
+        public void ValidateConfigurationsFile(string filePath) // ************************************* SWITCH BACK TO PRIVATE **********
         {
             configurations = new string[File.ReadLines(filePath).Count()];
             if (configurations.Length == 0)
                 throw new FileFormatException("Configurations file cannot be empty. File: '" + filePath + "'");
+
+            Dictionary<string, Vehicle> tempVehicles = new Dictionary<string, Vehicle>(32);
+            byte[,] tempGrid = new byte[6, 6]; // assume this size; change if needed
 
             int config = 1;
             foreach (string line in File.ReadLines(filePath))
@@ -83,7 +90,11 @@ namespace RushHourModel
                         filePath, config, sections[0]));
 
                 // ~~~ Check section 2 ~~~ (vehicle encodings)
-                byte[,] tempGrid = new byte[rows, cols];
+                //byte[,] tempGrid = new byte[rows, cols];
+                if (rows != tempGrid.GetLength(0) || cols != tempGrid.GetLength(1)) // only allocate new grid if dimensions have changed
+                    tempGrid = new byte[rows, cols];
+                else
+                    Array.Clear(tempGrid, 0, tempGrid.Length);
                 string[] vehicleEncodings = sections[1].Split(',');
                 if (vehicleEncodings.Length == 1 && vehicleEncodings[0].Equals(""))
                     throw new FileFormatException(string.Format("One or more vehicle encodings required. File: '{0}', Line: {1}", filePath, config));
@@ -91,7 +102,8 @@ namespace RushHourModel
                 // the Vehicles need to be stored so the solution moves can be validated
                 // IT'D PROBABLY BE MORE EFFICIENT TO USE A SINGLE DICTIONARY AND GRID FOR THE ENTIRE FILE (PERHAPS THE MAIN ONES)
                 // BUT IF I END UP MULTI-THREADING THE VALIDATION, EACH THREAD WILL NEED IT'S OWN DICTIONARY AND GRID.
-                Dictionary<string, Vehicle> tempVehicles = new Dictionary<string, Vehicle>(vehicleEncodings.Length * 2);
+                //Dictionary<string, Vehicle> tempVehicles = new Dictionary<string, Vehicle>(vehicleEncodings.Length * 2);
+                tempVehicles.Clear();
 
                 // validate each vehicle encoding (ID, row, col, vertical/horizontal, length)
                 foreach (string ve in vehicleEncodings)
@@ -148,6 +160,199 @@ namespace RushHourModel
                     throw new FileFormatException(string.Format("Solution moves did not solve configuration. File: '{0}', Line: {1}", filePath, config));
 
                 configurations[config++ - 1] = line; // configuration is valid, add to array
+            }
+        }
+
+
+
+
+
+
+
+
+        public void ValidateConfigurationsFile_MltThrd(string filePath) // ******* SWITCH BACK TO PRIVATE **********
+        {
+            configurations = new string[File.ReadLines(filePath).Count()];
+            if (configurations.Length == 0)
+                throw new FileFormatException("Configurations file cannot be empty. File: '" + filePath + "'");
+
+            int threads = 4; // CALCULATE THIS BASED ON THE ENVIRONMENT AND DIVIDE ACCORDINGLY? N/T-> LINES PER THREAD, N%T-> EXTRA LINES TO TACK ON TO LAST THREAD
+            string[] unValidatedConfigs = File.ReadLines(filePath).ToArray(); // JUST USE GLOBAL 'configurations' INSTEAD?
+
+            using (var countdownEvent = new CountdownEvent(threads))
+            {
+
+                ThreadPool.QueueUserWorkItem(
+                        x =>
+                        {
+                            ValidateConfigs(unValidatedConfigs, 0, 64, filePath);
+                            countdownEvent.Signal();
+                        });
+
+                ThreadPool.QueueUserWorkItem(
+                        x =>
+                        {
+                            ValidateConfigs(unValidatedConfigs, 64, 128, filePath);
+                            countdownEvent.Signal();
+                        });
+                ThreadPool.QueueUserWorkItem(
+                        x =>
+                        {
+                            ValidateConfigs(unValidatedConfigs, 128, 192, filePath);
+                            countdownEvent.Signal();
+                        });
+                ThreadPool.QueueUserWorkItem(
+                        x =>
+                        {
+                            ValidateConfigs(unValidatedConfigs, 192, 256, filePath);
+                            countdownEvent.Signal();
+                        });
+
+                countdownEvent.Wait();
+            }
+        }
+
+
+        private void ValidateConfigs(string[] unValidatedConfigs, int start, int end, string filePath)
+        {
+            for (int line = start; line < end; line++)
+            {
+                // check for correct number of semicolon-delimited sections
+                string[] sections = unValidatedConfigs[line].Split(';');
+                if (sections.Length != 3)
+                {
+                    lock (errorsLock) // SIMPLY WRITE TO AN ERRORS ARRAY, SAME LENGTH AS CONFIGURATIONS? NO NEED FOR LOCKING
+                    {                 // OR TO ADD TO THE CONFIGURATIONS ARRAY AT THE END. THE LOCK MAY BE UNNECCESARY REGARDLESS.
+                        errors.Add(string.Format("Expected 2 ';' (found {0}). File: '{1}', Line: {2}",
+                                sections.Length - 1, filePath, line + 1));
+                    }
+                    return;
+                }
+
+                // ~~~ Check section 1 ~~~ (difficulty, number of rows, number of columns)
+                string[] settings = sections[0].Split(' ');
+                int diff, rows, cols;
+                if (settings.Length != 3 || !Int32.TryParse(settings[0], out diff) || !Int32.TryParse(settings[1], out rows) ||
+                    !Int32.TryParse(settings[2], out cols) || diff < 1 || rows < 1 || cols < 1)
+                {
+                    lock (errorsLock)
+                    {
+                        errors.Add(string.Format("Expected 3 positive integers. File: '{0}', Line: {1}, Section: '{2}'",
+                            filePath, line + 1, sections[0]));
+                    }
+                    return;
+                }
+
+                // ~~~ Check section 2 ~~~ (vehicle encodings)
+                byte[,] tempGrid = new byte[rows, cols];
+                if (rows != tempGrid.GetLength(0) || cols != tempGrid.GetLength(1)) // only allocate new grid if dimensions have changed
+                    tempGrid = new byte[rows, cols];
+                else
+                    Array.Clear(tempGrid, 0, tempGrid.Length);
+                string[] vehicleEncodings = sections[1].Split(',');
+                if (vehicleEncodings.Length == 1 && vehicleEncodings[0].Equals(""))
+                {
+                    lock (errorsLock)
+                    {
+                        errors.Add(string.Format("One or more vehicle encodings required. File: '{0}', Line: {1}", filePath, line + 1));
+                    }
+                    return;
+                }
+
+                // the Vehicles need to be stored so the solution moves can be validated
+                Dictionary<string, Vehicle> tempVehicles = new Dictionary<string, Vehicle>(vehicleEncodings.Length * 2);
+
+                // validate each vehicle encoding (ID, row, col, vertical/horizontal, length)
+                foreach (string ve in vehicleEncodings)
+                {
+                    string[] vehicleData = ve.Trim().Split(' ');
+                    int _row, _col, length;
+                    if (vehicleData.Length != 5 || !Int32.TryParse(vehicleData[1], out _row) || !Int32.TryParse(vehicleData[2], out _col) ||
+                        !Int32.TryParse(vehicleData[4], out length) || (!vehicleData[3].Equals("V") && !vehicleData[3].Equals("H")))
+                    {
+                        lock (errorsLock)
+                        {
+                            errors.Add(string.Format("Expected vehicle encoding of the form '$ I I (V|H) I' where $ is a string, I is a positive integer, and the fourth element is a V or H. File: '{0}', Line: {1}, Encoding: '{2}'", filePath, line + 1, ve));
+                        }
+                        return;
+                    }
+                    int row = _row - 1; // change row and col to zero-indexed
+                    int col = _col - 1;
+                    bool vertical = vehicleData[3].Equals("V");
+
+                    if (row < 0 || col < 0 || length < 1 || (vertical && row + length > rows) || (!vertical && col + length > cols))
+                    {
+                        lock (errorsLock)
+                        {
+                            errors.Add(string.Format("Vehicle position and/or length is invalid or out of range. File: '{0}', Line: {1}, Encoding: '{2}'", filePath, line + 1, ve));
+                        }
+                        return;
+                    }
+
+                    // make sure vehicles don't overlap
+                    if (vertical)
+                        for (int i = 0; i < length; i++)
+                        {
+                            if (tempGrid[row + i, col] == 1)
+                            {
+                                lock (errorsLock)
+                                {
+                                    errors.Add(string.Format("Vehicle overlap. File: '{0}', Line: {1}, Encoding: '{2}'",
+                                        filePath, line + 1, ve));
+                                }
+                                return;
+                            }
+                            tempGrid[row + i, col] = 1;
+                        }
+                    else
+                        for (int i = 0; i < length; i++)
+                        {
+                            if (tempGrid[row, col + i] == 1)
+                            {
+                                lock (errorsLock)
+                                {
+                                    errors.Add(string.Format("Vehicle overlap. File: '{0}', Line: {1}, Encoding: '{2}'",
+                                        filePath, line + 1, ve));
+                                }
+                                return;
+                            }
+                            tempGrid[row, col + i] = 1;
+                        }
+                    tempVehicles.Add(vehicleData[0], new Vehicle(row, col, vertical, length));
+                }
+
+                // ~~~ Check section 3 ~~~ (solution moves)
+                bool victory = false;
+                string[] solutionMoves = sections[2].Split(',');
+                foreach (string sm in solutionMoves)
+                {
+                    // validate the format
+                    string[] moveData = sm.Trim().Split(' ');
+                    int spaces;
+                    if (moveData.Length != 2 || !Int32.TryParse(moveData[1], out spaces))
+                    {
+                        lock (errorsLock)
+                        {
+                            errors.Add(string.Format("Expected solution move of the form '$ I' where $ is a string and I is an integer. File: '{0}', Line: {1}, Move: '{2}'", filePath, line + 1, sm));
+                        }
+                        return;
+                    }
+
+                    // execute the move
+                    MoveVehiclePrivate(moveData[0], spaces, tempGrid, tempVehicles, out victory);
+                }
+
+                // make sure the moves resulted in a victory
+                if (!victory)
+                {
+                    lock (errorsLock)
+                    {
+                        errors.Add(string.Format("Solution moves did not solve configuration. File: '{0}', Line: {1}", filePath, line + 1));
+                    }
+                    return;
+                }
+
+                configurations[line] = unValidatedConfigs[line]; // configuration is valid, add to array
             }
         }
 
