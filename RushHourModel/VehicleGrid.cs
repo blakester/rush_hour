@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Threading;
+using System.Collections.Concurrent;
 
 namespace RushHourModel
 {
@@ -18,11 +19,12 @@ namespace RushHourModel
         private bool solved;
 
         // BELOW ARE USED FOR MULTI-THREADED VALIDATION, BUT ARE THEY NEEDED?
-        private Object errorsLock = new Object();
-        private List<string> errors = new List<string>(5);
+        //private Object errorsLock = new Object();
+        //private List<string> errors = new List<string>(5);
+        private ConcurrentBag<string> errors;
 
         // BELOW BOOL ISN'T STRICTLY NECESSARY. ILLEGAL MOVES, REGARDLESS OF THE SOURCE, WON'T WORK.
-        private bool userMoveMade, solutionMoveMade; 
+        private bool userMoveMade, solutionMoveMade;
 
         public int Rows
         { get; private set; }
@@ -54,7 +56,7 @@ namespace RushHourModel
         /// <param name="initialConfig">configuration to set grid to (configs start at 1)</param>
         public VehicleGrid(string configurationsFilePath, int initialConfig)
         {
-            ValidateConfigurationsFile(configurationsFilePath);            
+            ValidateConfigurationsFile_MltThrd(configurationsFilePath);            
             SetConfig(initialConfig);            
         }
 
@@ -65,7 +67,8 @@ namespace RushHourModel
         /// <param name="filePath">path to the configurations file</param>
         public void ValidateConfigurationsFile(string filePath) // ************************************* SWITCH BACK TO PRIVATE **********
         {
-            configurations = new string[File.ReadLines(filePath).Count()];
+            //configurations = new string[File.ReadLines(filePath).Count()];
+            configurations = File.ReadLines(filePath).ToArray();
             if (configurations.Length == 0)
                 throw new FileFormatException("Configurations file cannot be empty. File: '" + filePath + "'");
 
@@ -73,7 +76,8 @@ namespace RushHourModel
             byte[,] tempGrid = new byte[6, 6]; // assume a 6X6 grid; change if needed
 
             int config = 1;
-            foreach (string line in File.ReadLines(filePath))
+            //foreach (string line in File.ReadLines(filePath))
+            foreach (string line in configurations)
             {
                 // check for correct number of semicolon-delimited sections
                 string[] sections = line.Split(';');
@@ -159,7 +163,7 @@ namespace RushHourModel
                 if (!victory)
                     throw new FileFormatException(string.Format("Solution moves did not solve configuration. File: '{0}', Line: {1}", filePath, config));
 
-                configurations[config++ - 1] = line; // configuration is valid, add to array
+                //configurations[config++ - 1] = line; // configuration is valid, add to array
             }
         }
 
@@ -176,32 +180,44 @@ namespace RushHourModel
         // AN ASYNCHRONOUS METHOD.
         public void ValidateConfigurationsFile_MltThrd(string filePath) // ******* SWITCH BACK TO PRIVATE **********
         {
-            configurations = new string[File.ReadLines(filePath).Count()];
+            //configurations = new string[File.ReadLines(filePath).Count()];
+            configurations = File.ReadLines(filePath).ToArray();
             if (configurations.Length == 0)
                 throw new FileFormatException("Configurations file cannot be empty. File: '" + filePath + "'");
 
-            int threads = 4; // CALCULATE THIS BASED ON THE ENVIRONMENT?
+            errors = new ConcurrentBag<string>();
+            int threads = 4; // CALCULATE THIS BASED ON THE ENVIRONMENT? ****************************************************************
             int linesPerThread = configurations.Length / threads;
             int linesRemainder = configurations.Length % threads;
-            int start = 0;
-            int end = 0;
-            string[] unValidatedConfigs = File.ReadLines(filePath).ToArray(); // JUST USE GLOBAL 'configurations' INSTEAD?
+            //int start = 0;
+            //int end = 0;
+            //string[] unValidatedConfigs = File.ReadLines(filePath).ToArray(); // JUST USE GLOBAL 'configurations' INSTEAD?
 
             using (var countdownEvent = new CountdownEvent(threads))
             {
                 for (int i = 0; i < threads; i++)
                 {
-                    end += (i == threads - 1) ? linesPerThread + linesRemainder : linesPerThread;
+                    //end += (i == threads - 1) ? linesPerThread + linesRemainder : linesPerThread;
+                    int start = i * linesPerThread;
+                    int end = (i == threads - 1) ? (start + linesPerThread + linesRemainder) : (start + linesPerThread);
                     ThreadPool.QueueUserWorkItem(
                             x =>
                             {
-                                ValidateConfigs(unValidatedConfigs, start, end, filePath);
+                                ValidateConfigs(configurations, start, end, filePath);
                                 countdownEvent.Signal();
                             });
-                    start = end;
+                    //start = end;
                 }
                 countdownEvent.Wait();
             }
+            if (!errors.IsEmpty)
+            {
+                string errorMessage = "";
+                foreach (string error in errors)
+                    errorMessage += ("\n" + error);
+                throw new FileFormatException("Errors were found:" + errorMessage);
+            }
+            //configurations = unValidatedConfigs;
         }
 
 
@@ -209,16 +225,16 @@ namespace RushHourModel
         {
             for (int line = start; line < end; line++)
             {
+                bool error = false;
                 // check for correct number of semicolon-delimited sections
                 string[] sections = unValidatedConfigs[line].Split(';');
                 if (sections.Length != 3)
                 {
-                    lock (errorsLock) // SIMPLY WRITE TO AN ERRORS ARRAY, SAME LENGTH AS CONFIGURATIONS? NO NEED FOR LOCKING
-                    {                 // OR TO ADD TO THE CONFIGURATIONS ARRAY AT THE END. THE LOCK MAY BE UNNECCESARY REGARDLESS.
-                        errors.Add(string.Format("Expected 2 ';' (found {0}). File: '{1}', Line: {2}",
-                                sections.Length - 1, filePath, line + 1));
-                    }
-                    return;
+                    // SIMPLY WRITE TO AN ERRORS ARRAY, SAME LENGTH AS CONFIGURATIONS? NO NEED FOR LOCKING
+                    // OR TO ADD TO THE CONFIGURATIONS ARRAY AT THE END. THE LOCK MAY BE UNNECCESARY REGARDLESS.
+                    errors.Add(string.Format("Expected 2 ';' (found {0}). File: '{1}', Line: {2}",
+                            sections.Length - 1, filePath, line + 1));
+                    continue;
                 }
 
                 // ~~~ Check section 1 ~~~ (difficulty, number of rows, number of columns)
@@ -227,12 +243,9 @@ namespace RushHourModel
                 if (settings.Length != 3 || !Int32.TryParse(settings[0], out diff) || !Int32.TryParse(settings[1], out rows) ||
                     !Int32.TryParse(settings[2], out cols) || diff < 1 || rows < 1 || cols < 1)
                 {
-                    lock (errorsLock)
-                    {
-                        errors.Add(string.Format("Expected 3 positive integers. File: '{0}', Line: {1}, Section: '{2}'",
-                            filePath, line + 1, sections[0]));
-                    }
-                    return;
+                    errors.Add(string.Format("Expected 3 positive integers. File: '{0}', Line: {1}, Section: '{2}'",
+                        filePath, line + 1, sections[0]));
+                    continue;
                 }
 
                 // ~~~ Check section 2 ~~~ (vehicle encodings)
@@ -244,11 +257,8 @@ namespace RushHourModel
                 string[] vehicleEncodings = sections[1].Split(',');
                 if (vehicleEncodings.Length == 1 && vehicleEncodings[0].Equals(""))
                 {
-                    lock (errorsLock)
-                    {
-                        errors.Add(string.Format("One or more vehicle encodings required. File: '{0}', Line: {1}", filePath, line + 1));
-                    }
-                    return;
+                    errors.Add(string.Format("One or more vehicle encodings required. File: '{0}', Line: {1}", filePath, line + 1));
+                    continue;
                 }
 
                 // the Vehicles need to be stored so the solution moves can be validated
@@ -262,11 +272,9 @@ namespace RushHourModel
                     if (vehicleData.Length != 5 || !Int32.TryParse(vehicleData[1], out _row) || !Int32.TryParse(vehicleData[2], out _col) ||
                         !Int32.TryParse(vehicleData[4], out length) || (!vehicleData[3].Equals("V") && !vehicleData[3].Equals("H")))
                     {
-                        lock (errorsLock)
-                        {
-                            errors.Add(string.Format("Expected vehicle encoding of the form '$ I I (V|H) I' where $ is a string, I is a positive integer, and the fourth element is a V or H. File: '{0}', Line: {1}, Encoding: '{2}'", filePath, line + 1, ve));
-                        }
-                        return;
+                        errors.Add(string.Format("Expected vehicle encoding of the form '$ I I (V|H) I' where $ is a string, I is a positive integer, and the fourth element is a V or H. File: '{0}', Line: {1}, Encoding: '{2}'", filePath, line + 1, ve));
+                        error = true;
+                        break;
                     }
                     int row = _row - 1; // change row and col to zero-indexed
                     int col = _col - 1;
@@ -274,11 +282,9 @@ namespace RushHourModel
 
                     if (row < 0 || col < 0 || length < 1 || (vertical && row + length > rows) || (!vertical && col + length > cols))
                     {
-                        lock (errorsLock)
-                        {
-                            errors.Add(string.Format("Vehicle position and/or length is invalid or out of range. File: '{0}', Line: {1}, Encoding: '{2}'", filePath, line + 1, ve));
-                        }
-                        return;
+                        errors.Add(string.Format("Vehicle position and/or length is invalid or out of range. File: '{0}', Line: {1}, Encoding: '{2}'", filePath, line + 1, ve));
+                        error = true;
+                        break;
                     }
 
                     // make sure vehicles don't overlap
@@ -287,12 +293,10 @@ namespace RushHourModel
                         {
                             if (tempGrid[row + i, col] == 1)
                             {
-                                lock (errorsLock)
-                                {
-                                    errors.Add(string.Format("Vehicle overlap. File: '{0}', Line: {1}, Encoding: '{2}'",
+                                errors.Add(string.Format("Vehicle overlap. File: '{0}', Line: {1}, Encoding: '{2}'",
                                         filePath, line + 1, ve));
-                                }
-                                return;
+                                error = true;
+                                break;
                             }
                             tempGrid[row + i, col] = 1;
                         }
@@ -301,17 +305,19 @@ namespace RushHourModel
                         {
                             if (tempGrid[row, col + i] == 1)
                             {
-                                lock (errorsLock)
-                                {
-                                    errors.Add(string.Format("Vehicle overlap. File: '{0}', Line: {1}, Encoding: '{2}'",
+                                errors.Add(string.Format("Vehicle overlap. File: '{0}', Line: {1}, Encoding: '{2}'",
                                         filePath, line + 1, ve));
-                                }
-                                return;
+                                error = true;
+                                break;
                             }
                             tempGrid[row, col + i] = 1;
                         }
+                    if (error)
+                        break;
                     tempVehicles.Add(vehicleData[0], new Vehicle(row, col, vertical, length));
                 }
+                if (error)
+                    continue;
 
                 // ~~~ Check section 3 ~~~ (solution moves)
                 bool victory = false;
@@ -323,28 +329,25 @@ namespace RushHourModel
                     int spaces;
                     if (moveData.Length != 2 || !Int32.TryParse(moveData[1], out spaces))
                     {
-                        lock (errorsLock)
-                        {
-                            errors.Add(string.Format("Expected solution move of the form '$ I' where $ is a string and I is an integer. File: '{0}', Line: {1}, Move: '{2}'", filePath, line + 1, sm));
-                        }
-                        return;
+                        errors.Add(string.Format("Expected solution move of the form '$ I' where $ is a string and I is an integer. File: '{0}', Line: {1}, Move: '{2}'", filePath, line + 1, sm));
+                        error = true;
+                        break;
                     }
 
                     // execute the move
                     MoveVehiclePrivate(moveData[0], spaces, tempGrid, tempVehicles, out victory);
                 }
+                if (error)
+                    continue;
 
                 // make sure the moves resulted in a victory
                 if (!victory)
                 {
-                    lock (errorsLock)
-                    {
-                        errors.Add(string.Format("Solution moves did not solve configuration. File: '{0}', Line: {1}", filePath, line + 1));
-                    }
-                    return;
+                    errors.Add(string.Format("Solution moves did not solve configuration. File: '{0}', Line: {1}", filePath, line + 1));
+                    continue;
                 }
 
-                configurations[line] = unValidatedConfigs[line]; // configuration is valid, add to array
+                //configurations[line] = unValidatedConfigs[line]; // configuration is valid, add to array
             }
         }
 
