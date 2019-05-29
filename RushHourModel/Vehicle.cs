@@ -22,7 +22,7 @@ namespace RushHourModel
         public readonly int Length;
 
         /// <summary>
-        /// Left/top-most row coordinate of vehicle
+        /// Top-most row coordinate of vehicle
         /// </summary>
         public int BackRow          
         {
@@ -40,7 +40,7 @@ namespace RushHourModel
         }
         
         /// <summary>
-        /// Left/top-most column coordinate of vehicle
+        /// Left-most column coordinate of vehicle
         /// </summary>
         public int BackCol
         {
@@ -58,13 +58,13 @@ namespace RushHourModel
         }
 
         /// <summary>
-        /// Right/bottom-most row coordinate of vehicle
+        /// Bottom-most row coordinate of vehicle
         /// </summary>
         public int FrontRow
         { get; private set; }
 
         /// <summary>
-        /// Right/bottom-most column coordinate of vehicle
+        /// Right-most column coordinate of vehicle
         /// </summary>
         public int FrontCol
         { get; private set; }
@@ -72,9 +72,10 @@ namespace RushHourModel
         /// <summary>
         /// Constructs a new Vehicle
         /// </summary>
-        /// <param name="backRow">left/top-most row coordinate of vehicle</param>
-        /// <param name="backCol">left/top-most column coordinate of vehicle</param>
+        /// <param name="backRow">top-most row coordinate of vehicle</param>
+        /// <param name="backCol">left-most column coordinate of vehicle</param>
         /// <param name="vertical">orientation of vehicle (true if vertical, fasle if horizontal)</param>
+        /// <param name="length">cell-length of vehicle</param>
         public Vehicle(int backRow, int backCol, bool vertical, int length)
         {
             if (length < 1)
