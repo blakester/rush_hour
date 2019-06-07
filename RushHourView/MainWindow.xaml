@@ -1,31 +1,50 @@
 ﻿<Window x:Name="mainWindow" x:Class="RushHour.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="MainWindow" Height="650" Width="525">
-        <!--KeyDown="mainWindow_KeyDown">-->
-    
-    
-    
+        Title="Rush Hour" Height="650" Width="525" MinHeight="650" MinWidth="525">
 
-    <!--<StackPanel>
-        --><!--<Rectangle Fill="#FFF4F4F5" HorizontalAlignment="Left" Height="102" Stroke="Black" VerticalAlignment="Top" Width="517"/>--><!--
-        <StackPanel Orientation="Horizontal">
-            <Button x:Name="solutionMoveButton" Content="Next Solution Move" Width="121" Click="solutionMoveButton_Click"/>
-            <Button x:Name="configButton" Content="Set Config" Width="75" Click="configButton_Click"/>
-            <TextBox x:Name="configEntryBox" Height="20" TextWrapping="Wrap" Width="29" ToolTip="Configuration number (negative for random)"/>
-        </StackPanel>
+    <Border x:Name="mainBorder" Padding="10">
+        
+        <!--<StackPanel x:Name="mainStackPanel">-->
+        <Grid x:Name="mainGrid">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="7*"/>
+            </Grid.RowDefinitions>
 
-        <Grid x:Name="gameGrid" Height="500" Width="500" ShowGridLines="True"></Grid>
-    </StackPanel>-->
-    
-    
-    <Grid x:Name="mainGrid">
-        <Grid x:Name="gameGrid" Height="500" Width="500" ShowGridLines="True" VerticalAlignment="Bottom"></Grid>
-        <Rectangle x:Name="controlsRectangle" Fill="#FFF4F4F5" HorizontalAlignment="Left" Height="102" Stroke="Black" VerticalAlignment="Top" Width="517"/>
-        <Button x:Name="solutionMoveButton" Content="Next Solution Move" HorizontalAlignment="Left" VerticalAlignment="Top" Width="auto" Padding="3" Margin="386,64,0,0" Click="solutionMoveButton_Click"/>
-        <Button x:Name="solutionUndoButton" Content="Undo Solution Move" HorizontalAlignment="Left" VerticalAlignment="Top" Width="auto" Padding="3" Margin="386,35,0,0" Click="solutionMoveButton_Click"/>
-        <Button x:Name="configButton" Content="Set/Reset Config" HorizontalAlignment="Left" VerticalAlignment="Top" Width="auto" Padding="3" Margin="10,64,0,0" Click="configButton_Click"/>
-        <TextBox x:Name="configEntryBox" HorizontalAlignment="Left" Height="20" Margin="128,68,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="29" ToolTip="Configuration number (negative for random)"/>
-    </Grid>
+            <Grid x:Name="configsGrid" Grid.Row="0" Margin="0,0,0,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="2*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <Button x:Name="previousConfigButton" Grid.Column="0" Margin="0,0,10,0" FontFamily="Marlett" FontSize="20" Content="3" ToolTip="Previous configuration"/>
+                <Grid x:Name="setConfigGrid" Grid.Column="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="3*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <!--L T R B-->
+                    <Button x:Name="configButton" Grid.Column="0" Margin="0,0,5,0" Content="Set/Reset Config" Padding="3" Click="configButton_Click"/>
+                    <TextBox x:Name="configEntryBox" Grid.Column="1" TextWrapping="Wrap" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" FontSize="15" ToolTip="Configuration number (negative for random)"/>
+                </Grid>
+
+                <Button x:Name="nextConfigButton" Grid.Column="2" Margin="10,0,0,0" FontFamily="Marlett" FontSize="20" Content="4" ToolTip="Next configuration"/>
+            </Grid>
+
+            <!--</StackPanel>-->
+            <!--<StackPanel Orientation="Horizontal" Margin="10,10,10,10">-->
+            <Button x:Name="solutionMoveButton" Grid.Row="1" Margin="0,0,0,10" Content="Next Solution Move" Width="auto" Padding="3"  Click="solutionMoveButton_Click"/>
+                <!--<Button x:Name="solutionUndoButton" Content="Undo Solution Move" Width="auto" Padding="3" Click="solutionMoveButton_Click"/>-->
+            <!--</StackPanel>-->
+            <!--APPARENTLY (PERHAPS) HAVING A GRID WITHIN A STACKPANEL CAUSES IT TO NOT STRETCH VERTICALLY-->
+            <Grid x:Name="gameGrid" Grid.Row="2" ShowGridLines="True" Width="{Binding ActualHeight, Mode=OneWay, RelativeSource={RelativeSource Mode=Self}}" Background="Aqua"/>
+
+        </Grid>
+        <!--</StackPanel>-->
+        
+    </Border>
 
 </Window>

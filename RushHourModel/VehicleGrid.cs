@@ -161,15 +161,19 @@ namespace RushHourModel
                     if (moveData.Length != 2 || !Int32.TryParse(moveData[1], out spaces))
                         throw new FileFormatException(string.Format("Expected solution move of the form '$ I' where $ is a string and I is an integer. File: '{0}', Line: {1}, Move: '{2}'", filePath, config, sm));
 
-                    // execute the move
-                    MoveVehiclePrivate(moveData[0], spaces, tempGrid, tempVehicles, false, out solved);
+                    // validate vehicle ID
+                    if (!tempVehicles.ContainsKey(moveData[0]))
+                        throw new FileFormatException(string.Format("Undefined vehicle ID in solution move. File: '{0}', Line: {1}, Move: '{2}'", filePath, config, sm));
+
+                    // execute/validate the move
+                    if (!MoveVehiclePrivate(moveData[0], spaces, tempGrid, tempVehicles, true, out solved))
+                        throw new FileFormatException(string.Format("Illegal solution move (ensure previous moves are also correct). File: '{0}', Line: {1}, Move: '{2}'", filePath, config, sm));
                 }
 
                 // make sure the moves solved the configuration
                 if (!solved)
                     throw new FileFormatException(string.Format("Solution moves did not solve configuration. File: '{0}', Line: {1}", filePath, config));
                 config++;
-                //configurations[config++ - 1] = line; // configuration is valid, add to array
             }
         }
 
@@ -180,22 +184,21 @@ namespace RushHourModel
         // BUT YOU'D HAVE TO GENERATE SOME SORT OF EVENT TO NOTIFY THE VIEW THAT A CONFIG WAS BAD SINCE THIS WOULD BECOME
         // AN ASYNCHRONOUS METHOD.
         /// <summary>
-        /// Validates the specified configurations file using multiple threads and throws an exception reporting all errors,
-        /// if any.
+        /// Validates the specified configurations file using multiple threads and throws an exception reporting any/all errors.
         /// </summary>
         /// <param name="filePath">path to the configurations file</param>
         public void ValidateConfigurationsFile_MltThrd(string filePath) // ******* SWITCH BACK TO PRIVATE **********
         {
-            //configurations = new string[File.ReadLines(filePath).Count()];
             configurations = File.ReadLines(filePath).ToArray();
             if (configurations.Length == 0)
                 throw new FileFormatException("Configurations file cannot be empty. File: '" + filePath + "'");
 
             errors = new ConcurrentBag<string>();
-            int workItems = Environment.ProcessorCount; // NOT POSITIVE THIS IS BEST
-            int linesPerThread = configurations.Length / workItems;
-            int linesRemainder = configurations.Length % workItems;
+            int workItems = Environment.ProcessorCount;             // NOT POSITIVE THIS IS BEST
+            int linesPerThread = configurations.Length / workItems; // how many lines each thread will process
+            int linesRemainder = configurations.Length % workItems; // extra lines to tack on to last thread
 
+            // split the configurations array into 'workItems' pieces and validate with seperate threads
             using (var countdownEvent = new CountdownEvent(workItems))
             {
                 for (int i = 0; i < workItems; i++)
@@ -209,9 +212,11 @@ namespace RushHourModel
                                 countdownEvent.Signal();
                             });
                 }
+                // don't proceed until all threads have completed
                 countdownEvent.Wait();
             }
 
+            // report any/all errors
             if (!errors.IsEmpty)
             {
                 string errorMessage = "";
@@ -226,18 +231,18 @@ namespace RushHourModel
         /// Validates the specified configs array from index start (inclusive) to end (exclusive) and uses
         /// the specified filePath simply for error messages.
         /// </summary>
-        /// <param name="unValidatedConfigs">configurations array</param>
+        /// <param name="configs">configurations array</param>
         /// <param name="start">configuration index to start validation (inclusive)</param>
         /// <param name="end">configuration index to end validation (exclusive)</param>
         /// <param name="filePath">filePath of configurations file (used for error messages)</param>
-        private void ValidateConfigs(string[] unValidatedConfigs, int start, int end, string filePath)
+        private void ValidateConfigs(string[] configs, int start, int end, string filePath)
         {
             for (int line = start; line < end; line++)
             {
                 bool error = false;
 
                 // check for correct number of semicolon-delimited sections
-                string[] sections = unValidatedConfigs[line].Split(';');
+                string[] sections = configs[line].Split(';');
                 if (sections.Length != 3)
                 {
                     errors.Add(string.Format("Expected 2 ';' (found {0}). File: '{1}', Line: {2}",
@@ -342,19 +347,31 @@ namespace RushHourModel
                         break;
                     }
 
-                    // execute the move
-                    MoveVehiclePrivate(moveData[0], spaces, tempGrid, tempVehicles, false, out solved);
+                    // validate vehicle ID
+                    if (!tempVehicles.ContainsKey(moveData[0]))
+                    {
+                        errors.Add(string.Format("Undefined vehicle ID in solution move. File: '{0}', Line: {1}, Move: '{2}'", filePath, line + 1, sm));
+                        error = true;
+                        break;
+                    }
+
+                    // execute/validate the move
+                    if (!MoveVehiclePrivate(moveData[0], spaces, tempGrid, tempVehicles, true, out solved))
+                    {
+                        errors.Add(string.Format("Illegal solution move (ensure previous moves are also correct). File: '{0}', Line: {1}, Move: '{2}'", filePath, line + 1, sm));
+                        error = true;
+                        break;
+                    }
                 }
                 if (error)
                     continue;
 
-                // make sure the moves resulted in a victory
+                // make sure the moves solved the config
                 if (!solved)
                 {
                     errors.Add(string.Format("Solution moves did not solve configuration. File: '{0}', Line: {1}", filePath, line + 1));
                     continue;
                 }
-                //configurations[line] = unValidatedConfigs[line]; // configuration is valid, add to array
             }
         }
 

@@ -46,9 +46,19 @@ namespace RushHour
 
             // set gameGrid rows and columns according to the configuration
             for (int i = 0; i < grid.Rows; i++)
+            {
+                //RowDefinition rowDef = new RowDefinition();
+                //rowDef.Height = new GridLength(1.0, GridUnitType.Star);
+                //gameGrid.RowDefinitions.Add(rowDef);
                 gameGrid.RowDefinitions.Add(new RowDefinition());
+            }
             for (int i = 0; i < grid.Columns; i++)
+            {
+                //ColumnDefinition colDef = new ColumnDefinition();
+                //colDef.Width = new GridLength(100, GridUnitType.Star);
+                //gameGrid.ColumnDefinitions.Add(colDef);
                 gameGrid.ColumnDefinitions.Add(new ColumnDefinition());
+            }
 
             // represent each Vehicle as a Border
             //foreach (KeyValuePair<string, VehicleInfo> kv in grid.vehicles)
@@ -121,11 +131,11 @@ namespace RushHour
 
         private void solutionMoveButton_Click(object sender, RoutedEventArgs e)
         {
-            VehicleStruct? movedVehicle;
-            if (((Button)sender).Equals(solutionMoveButton))
-                movedVehicle = grid.NextSolutionMove();
-            else
-                movedVehicle = grid.UndoSolutionMove(); // GET RID OF? CAN'T THINK OF REASONABLE USE-CASE.
+            VehicleStruct? movedVehicle = grid.NextSolutionMove();
+            //if (((Button)sender).Equals(solutionMoveButton))
+            //    movedVehicle = grid.NextSolutionMove();
+            //else
+            //    movedVehicle = grid.UndoSolutionMove(); // GET RID OF? CAN'T THINK OF REASONABLE USE-CASE.
 
             if (movedVehicle.HasValue) // HANDLE NULL VehicleStruct (I.E. WHEN THE MOVE CAN'T BE MADE)
             {
