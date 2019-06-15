@@ -41,6 +41,8 @@ namespace RushHour
             vehicleIDs.Clear();
             borders.Clear();
             gameGrid.Children.Clear();
+
+            // ONLY DO THESE IF NEW GRID HAS DIFFERENT DIMENSIONS THAN THE CURRENT GRID? ************************************
             gameGrid.RowDefinitions.Clear();
             gameGrid.ColumnDefinitions.Clear();
 
@@ -61,16 +63,12 @@ namespace RushHour
             }
 
             // represent each Vehicle as a Border
-            //foreach (KeyValuePair<string, VehicleInfo> kv in grid.vehicles)
             foreach (VehicleStruct vd in grid.GetVehicleStucts())
             {
-                //string vID = kv.Key;
-                //VehicleInfo v = kv.Value;
                 Border vehicleBorder = new Border();
                 vehicleBorder.BorderThickness = new Thickness(8, 8, 8, 8);
                 vehicleBorder.CornerRadius = new CornerRadius(15);
                 
-                //if (vID.Equals("X"))
                 if (vd.id.Equals("X"))
                     vehicleBorder.Background = Brushes.Red;
                 else
@@ -137,6 +135,7 @@ namespace RushHour
             //else
             //    movedVehicle = grid.UndoSolutionMove(); // GET RID OF? CAN'T THINK OF REASONABLE USE-CASE.
 
+            // THIS IF SHOULDN'T BE NECESSARY->SOLUTION MOVES WILL ALWAYS WORK SO LONG AS THE BUTTON IS ENABLED
             if (movedVehicle.HasValue) // HANDLE NULL VehicleStruct (I.E. WHEN THE MOVE CAN'T BE MADE)
             {
                 VehicleStruct mv = movedVehicle.Value;
@@ -157,7 +156,47 @@ namespace RushHour
         {
             int config = Int32.Parse(configEntryBox.Text); // THIS NEEDS TO BE VALIDATED, OR NON-NUMBERS SHOULD BE PROHIBITIED AT ENTRY
             grid.SetConfig(config);
+            configEntryBox.Text = grid.CurrentConfig.ToString();
             SetGameGrid();            
+        }
+
+        private void configEntryBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                int config = Int32.Parse(configEntryBox.Text); // THIS NEEDS TO BE VALIDATED, OR NON-NUMBERS SHOULD BE PROHIBITIED AT ENTRY
+                grid.SetConfig(config);
+                SetGameGrid();
+            }
+        }
+
+        private void randomButton_Click(object sender, RoutedEventArgs e)
+        {
+            grid.SetConfig(0);
+            configEntryBox.Text = grid.CurrentConfig.ToString();
+            SetGameGrid(); 
+        }
+
+        private void previousConfigButton_Click(object sender, RoutedEventArgs e)
+        {
+            int config = Int32.Parse(configEntryBox.Text);
+            if (config - 1 == 0)
+                grid.SetConfig(grid.TotalConfigs);
+            else
+                grid.SetConfig(config - 1);
+            configEntryBox.Text = grid.CurrentConfig.ToString();
+            SetGameGrid();
+        }
+
+        private void nextConfigButton_Click(object sender, RoutedEventArgs e)
+        {
+            int config = Int32.Parse(configEntryBox.Text);
+            if (config + 1 > grid.TotalConfigs)
+                grid.SetConfig(1);
+            else
+                grid.SetConfig(config + 1);
+            configEntryBox.Text = grid.CurrentConfig.ToString();
+            SetGameGrid();
         }
 
 
@@ -209,6 +248,11 @@ namespace RushHour
             }
             e.Handled = true;
         }
+
+
+
+
+
     }
 
 

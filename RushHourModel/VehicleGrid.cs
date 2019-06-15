@@ -37,6 +37,12 @@ namespace RushHourModel
         { get; private set; }
 
         /// <summary>
+        /// Total number of configurations
+        /// </summary>
+        public int TotalConfigs
+        { get { return configurations.Length; } }
+
+        /// <summary>
         /// Current configuration number
         /// </summary>
         public int CurrentConfig
@@ -123,6 +129,10 @@ namespace RushHourModel
                     if (vehicleData.Length != 5 || !Int32.TryParse(vehicleData[1], out _row) || !Int32.TryParse(vehicleData[2], out _col) ||
                         !Int32.TryParse(vehicleData[4], out length) || (!vehicleData[3].Equals("V") && !vehicleData[3].Equals("H")))
                         throw new FileFormatException(string.Format("Expected vehicle encoding of the form '$ I I (V|H) I' where $ is a string, I is a positive integer, and the fourth element is a V or H. File: '{0}', Line: {1}, Encoding: '{2}'", filePath, config, ve));
+
+                    if (tempVehicles.ContainsKey(vehicleData[0]))
+                        throw new FileFormatException(string.Format("Duplicate vehicle ID. File: '{0}', Line: {1}, Encoding: '{2}'", filePath, config, ve));
+
                     int row = _row - 1; // change row and col to zero-indexed
                     int col = _col - 1;
                     bool vertical = vehicleData[3].Equals("V");
