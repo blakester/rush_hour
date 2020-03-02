@@ -34,6 +34,11 @@ namespace RushHour
             configEntryBox.Text = initialConfig.ToString();
             SetGameGrid();
             //Panel.SetZIndex(solutionMoveButton, -1); // MAY BE USEFUL FOR VEHEICLES/BORDERS TO SIT ABOVE A GRID IMAGE
+ 
+            // DRAGGABLE CONTROL EXPERIMENTATION
+            //nextConfigButton.PreviewMouseLeftButtonDown += new MouseButtonEventHandler(root_MouseLeftButtonDown);
+            //nextConfigButton.MouseMove += new MouseEventHandler(root_MouseMove);
+            //nextConfigButton.PreviewMouseLeftButtonUp += new MouseButtonEventHandler(root_MouseLeftButtonUp); 
         }
 
         private void SetGameGrid()
@@ -82,12 +87,21 @@ namespace RushHour
                 gameGrid.Children.Add(vehicleBorder);
                 vehicleBorder.Focusable = true;
 
-                //vehicleBorder.MouseLeftButtonDown += new MouseButtonEventHandler(Border_MouseLeftButtonDown);
+                // OPTION 1 - SELECT BORDER WITH MouseLeftButtonDown EVENT
+                vehicleBorder.MouseLeftButtonDown += new MouseButtonEventHandler(Border_MouseLeftButtonDown);
+                // THIS SHOULD BE EQUIVALENT TO STATEMENT ABOVE
                 //vehicleBorder.AddHandler(Border.MouseLeftButtonDownEvent, new RoutedEventHandler(Border_MouseLeftButtonDown));              
                 
-                vehicleBorder.PreviewMouseLeftButtonDown += new MouseButtonEventHandler(Border_PreviewMouseDown);
-                vehicleBorder.AddHandler(Border.GotKeyboardFocusEvent, new RoutedEventHandler(Border_GotFocus));
+                // OPTION 2 - SELECT BORDER BY GIVING IT KEYBOARD FOCUS
+                //vehicleBorder.MouseLeftButtonDown += new MouseButtonEventHandler(Border_PreviewMouseDown); // ALSO WORKS FOR PREVIEW EVENT
+                //vehicleBorder.AddHandler(Border.GotKeyboardFocusEvent, new RoutedEventHandler(Border_GotFocus));
 
+                // DRAGGABLE CONTROL EXPERIMENTATION
+                //vehicleBorder.PreviewMouseLeftButtonDown += new MouseButtonEventHandler(root_MouseLeftButtonDown);
+                //vehicleBorder.MouseMove += new MouseEventHandler(root_MouseMove);
+                //vehicleBorder.PreviewMouseLeftButtonUp += new MouseButtonEventHandler(root_MouseLeftButtonUp);   
+                    
+                
                 vehicleBorder.KeyDown += new KeyEventHandler(border_KeyDown);
 
                 Grid.SetRow(vehicleBorder, vd.row);
@@ -99,22 +113,24 @@ namespace RushHour
             }
         }
 
+        // OPTION 1 (SEE SetGameGrid ABOVE)
+        private void Border_MouseLeftButtonDown(object sender, RoutedEventArgs e)
+        {
+            // remove highlighting from selected
+            if (selected != null)
+                selected.BorderBrush = null;
+            selected = (Border)sender;
+            selected.BorderBrush = Brushes.Blue;
+            selected.Focus();
+        }
 
-        //private void Border_MouseLeftButtonDown(object sender, RoutedEventArgs e)
-        //{
-        //    // remove highlighting from selected
-        //    if (selected != null)
-        //        selected.BorderBrush = null;
-        //    selected = (Border)sender;
-        //    selected.BorderBrush = Brushes.Blue;
-        //    selected.Focus();
-        //}
-
+        // OPTION 2 (SEE SetGameGrid ABOVE)
         private void Border_PreviewMouseDown(object sender, MouseButtonEventArgs e)
         {
             Keyboard.Focus(sender as Border);
         }
 
+        // OPTION 2 (SEE SetGameGrid ABOVE)
         private void Border_GotFocus(object sender, RoutedEventArgs e)
         {
             // remove highlighting from selected
@@ -252,8 +268,58 @@ namespace RushHour
 
 
 
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ DRAGGABLE CONTROL EXPERIMENTATION ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+        Point _anchorPoint;
+        Point _currentPoint;
+        bool _isInDrag;
+
+        private void root_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            var element = sender as FrameworkElement;
+            _anchorPoint = e.GetPosition(null);
+            if (element != null) 
+                element.CaptureMouse();
+            _isInDrag = true;
+            e.Handled = true;
+        }
+
+        private readonly TranslateTransform _transform = new TranslateTransform();
+        private void root_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (_isInDrag)
+            {
+                var element = sender as FrameworkElement;
+                _currentPoint = e.GetPosition(null);
+
+                _transform.X += _currentPoint.X - _anchorPoint.X;
+                _transform.Y += (_currentPoint.Y - _anchorPoint.Y);
+                this.RenderTransform = _transform;
+                _anchorPoint = _currentPoint;
+            }
+        }
+
+        private void root_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (_isInDrag)
+            {
+                var element = sender as FrameworkElement;
+                if (element != null) element.ReleaseMouseCapture();
+                _isInDrag = false;
+                e.Handled = true;
+            }
+        }
+
+
+
+
 
     }
+
+
+
+
+
 
 
 
