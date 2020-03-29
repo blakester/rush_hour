@@ -683,6 +683,20 @@ namespace RushHourModel
             return vs;
         }
 
+
+        public VehicleStruct GetVehicleStuct(string vehicleID)
+        {
+            Vehicle v = vehicles[vehicleID];
+            return new VehicleStruct(vehicleID, v.BackRow, v.BackCol, v.Vertical, v.Length);
+        }
+
+        public bool IsCellOpen(int row, int col)
+        {
+            if (row >= 0 && row < Rows && col >= 0 && col < Columns)
+                return grid[row, col] == 0;
+            return false;
+        }
+
     }
 
 

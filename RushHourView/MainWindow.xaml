@@ -10,7 +10,7 @@
     <Border x:Name="mainBorder" Padding="10">
         
         <!--<StackPanel x:Name="mainStackPanel">-->
-        <Grid x:Name="mainGrid">
+        <Grid x:Name="mainGrid" AllowDrop="True">
             <Grid.RowDefinitions>
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="*"/>
@@ -40,15 +40,31 @@
                 <Button x:Name="nextConfigButton" Grid.Column="2" Margin="10,0,0,0" FontFamily="Marlett" FontSize="20" Content="4" ToolTip="Next configuration" Click="nextConfigButton_Click"/>
             </Grid>
 
-            <!--</StackPanel>-->
-            <!--<StackPanel Orientation="Horizontal" Margin="10,10,10,10">-->
-            <Button x:Name="solutionMoveButton" Grid.Row="1" Margin="0,0,0,10" Content="Next Solution Move" Width="auto" Padding="3" Click="solutionMoveButton_Click"/>
-            <!--<Button x:Name="solutionUndoButton" Content="Undo Solution Move" Width="auto" Padding="3" Click="solutionMoveButton_Click"/>-->
-            <!--</StackPanel>-->
+ 
+
+            <StackPanel Orientation="Horizontal" Grid.Row="1">
+            <Button x:Name="solutionMoveButton" Margin="0,0,0,10" Content="Next Solution Move" Width="150" HorizontalAlignment="Left" Padding="3" Click="solutionMoveButton_Click"/>
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <Label x:Name="positionLabel" Content="Mouse Grid Coordinates:"/>
+                        <Label x:Name="positionActual"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,-10">
+                        <Label x:Name="anchorPositionLabel" Content="Anchor Point Coordinates:"/>
+                        <Label x:Name="anchorPositionActual"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <Label x:Name="currentPositionLabel" Content="Current Point Coordinates:"/>
+                        <Label x:Name="currentPositionActual"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <!--<Button x:Name="solutionUndoButton" Content="Undo Solution Move" Width="auto" Padding="3" Click="solutionMoveButton_Click"/>-->
+            </StackPanel>
             <!--APPARENTLY (PERHAPS) HAVING A GRID WITHIN A STACKPANEL CAUSES IT TO NOT STRETCH VERTICALLY-->
 
             <Viewbox Grid.Row="2" Stretch="Uniform">
-                <Grid x:Name="gameGrid" Height="800" Width="800" ShowGridLines="True" Background="Aqua"/>
+                <Grid x:Name="gameGrid" Height="800" Width="800" MouseMove="gameGrid_MouseMove"/>
             </Viewbox>
 
             <!--<Grid x:Name="gameGrid" Grid.Row="2" ShowGridLines="True" Width="{Binding ActualHeight, Mode=OneWay, RelativeSource={RelativeSource Mode=Self}}" Background="Aqua"/>-->
