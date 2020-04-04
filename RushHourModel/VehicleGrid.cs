@@ -690,11 +690,60 @@ namespace RushHourModel
             return new VehicleStruct(vehicleID, v.BackRow, v.BackCol, v.Vertical, v.Length);
         }
 
+
         public bool IsCellOpen(int row, int col)
         {
             if (row >= 0 && row < Rows && col >= 0 && col < Columns)
                 return grid[row, col] == 0;
             return false;
+        }
+
+
+        public int GetOpenCells(string vehicleID, bool ahead)
+        {
+            int openCells = 0;
+            int nextCell = 1;
+            Vehicle v = vehicles[vehicleID];
+
+            if (v.Vertical)
+            {
+                if (ahead)
+                {
+                    while (IsCellOpen(v.FrontRow + nextCell, v.FrontCol))
+                    {
+                        openCells++;
+                        nextCell++;
+                    }
+                }
+                else
+                {
+                    while (IsCellOpen(v.BackRow - nextCell, v.BackCol))
+                    {
+                        openCells++;
+                        nextCell++;
+                    }
+                }
+            }
+            else
+            {
+                if (ahead)
+                {
+                    while (IsCellOpen(v.FrontRow, v.FrontCol + nextCell))
+                    {
+                        openCells++;
+                        nextCell++;
+                    }
+                }
+                else
+                {
+                    while (IsCellOpen(v.BackRow, v.BackCol - nextCell))
+                    {
+                        openCells++;
+                        nextCell++;
+                    }
+                }
+            }
+            return openCells;
         }
 
     }

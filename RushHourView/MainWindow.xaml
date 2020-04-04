@@ -58,6 +58,28 @@
                         <Label x:Name="currentPositionActual"/>
                     </StackPanel>
                 </StackPanel>
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <Label x:Name="behindLabel" Content="Behind:"/>
+                        <Label x:Name="behindActual"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,-10">
+                        <Label x:Name="aheadLabel" Content="Ahead:"/>
+                        <Label x:Name="aheadActual"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <Label x:Name="deltaLabel" Content="Delta:"/>
+                        <Label x:Name="deltaActual"/>
+                    </StackPanel>
+                    <!--<StackPanel Orientation="Horizontal">
+                        <Label x:Name="aheadLabel" Content="Space Ahead:"/>
+                        <Label x:Name="aheadActual"/>
+                    </StackPanel>-->
+                    <!--<StackPanel Orientation="Horizontal" Margin="0,-10">
+                        <Label x:Name="behindLabel" Content="Space Behind:"/>
+                        <Label x:Name="behindActual"/>
+                    </StackPanel>-->
+                </StackPanel>
 
                 <!--<Button x:Name="solutionUndoButton" Content="Undo Solution Move" Width="auto" Padding="3" Click="solutionMoveButton_Click"/>-->
             </StackPanel>
