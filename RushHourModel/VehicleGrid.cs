@@ -504,19 +504,19 @@ namespace RushHourModel
 
 
         /// <summary>
-        /// Moves the specified vehicle the specified number of spaces (negative values move vertical
+        /// Attempts to move the specified vehicle the specified number of spaces (negative values move vertical
         /// vehicles up and horizontal vehicles left). Check boolean property 'Solved' to see if the
         /// move solved the configuration.
         /// </summary>
         /// <param name="vehicleID">the ID of the Vehicle to move</param>
         /// <param name="spaces">number of spaces to move (negative values move up/left)</param>
-        /// <returns>true if the move was successful/legal</returns>
+        /// <returns>true if the vehicle was moved</returns>
         public bool MoveVehicle(string vehicleID, int spaces)
         {
-            bool successful = MoveVehiclePrivate(vehicleID, spaces, grid, vehicles, true, out solved);
-            if (successful)
-                userMoveMade = true;
-            return successful;
+            if (spaces == 0)
+                return false;            
+            userMoveMade = MoveVehiclePrivate(vehicleID, spaces, grid, vehicles, true, out solved);
+            return userMoveMade;
         }
 
 
@@ -547,7 +547,7 @@ namespace RushHourModel
             if (v.Vertical)
             {
                 // move down
-                if (spaces >= 0)
+                if (spaces > 0)
                 {
                     if (validate)
                     {
@@ -584,7 +584,7 @@ namespace RushHourModel
             else
             {
                 // move right
-                if (spaces >= 0)
+                if (spaces > 0)
                 {
                     if (validate)
                     {

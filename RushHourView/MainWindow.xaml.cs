@@ -678,13 +678,37 @@ namespace RushHour
 
                 //DragDrop.DoDragDrop(element, element, DragDropEffects.Move); // ADDED THIS LINE
 
-                // TODO: THIS MAY MAKE THINGS WORK: DETERMINE WHAT CELL TO SET THE BORDER TO THEN SET THE TRANSFORM TO NULL.
-                // THIS MAY FIX THE SNAPPING BACK ISSUE.
+                // determine the cell to place vehicle
+                Border vehicleBorder = sender as Border; // ADDED THIS LINE                  
+                vehicleBorder.RenderTransform = null; // only used during drag, we don't want to apply it after setting new position
+                int vehicleRow = Grid.GetRow(vehicleBorder);
+                int vehicleColumn = Grid.GetColumn(vehicleBorder);
+                double cellSize = _furthestOpenCellBehind.ActualHeight;
+                bool vehicleMoved;
 
-                Border vehicleBorder = sender as Border; // ADDED THIS LINE                
-                vehicleBorder.RenderTransform = null; // ADDED THIS LINE. ENSURES THE SETROW/COLUMN UPDATE DOESN'T INCLUDE THE MOVEMENT FROM THE DRAG, I.E. THE SETROW/COLUMN ISN'T RELATIVE TO THE FINAL DRAG POSITION.
-                //Grid.SetRow(vehicleBorder, 2);
-                vehicleBorder.RaiseEvent(new RoutedEventArgs(Frame.LoadedEvent, vehicleBorder));
+                if (Grid.GetRowSpan(vehicleBorder) > 1) // vertical vehicle
+                {
+                    Point pointFromTopMostWall = vehicleBorder.TranslatePoint(new Point(0, 0), _cellBorders[0, vehicleColumn]);
+                    int nearestRow = (int)Math.Round(pointFromTopMostWall.Y / cellSize, 0);
+                    int spacesMoved = (nearestRow - vehicleRow);
+                    Grid.SetRow(vehicleBorder, nearestRow);
+                    vehicleMoved = _grid.MoveVehicle(_bordersToVIDs[vehicleBorder], spacesMoved);
+                }
+                else // horizontal vehicle
+                {
+                    Point pointFromLeftMostWall = vehicleBorder.TranslatePoint(new Point(0, 0), _cellBorders[vehicleRow, 0]);
+                    int nearestColumn = (int)Math.Round(pointFromLeftMostWall.X / cellSize, 0);
+                    int spacesMoved = (nearestColumn - vehicleColumn);
+                    Grid.SetColumn(vehicleBorder, nearestColumn);
+                    vehicleMoved = _grid.MoveVehicle(_bordersToVIDs[vehicleBorder], spacesMoved);
+                }
+
+                solutionMoveButton.IsEnabled = !vehicleMoved;
+
+                if (_grid.Solved)
+                    vehicleBorder.Background = Brushes.Green;
+                
+                //vehicleBorder.RaiseEvent(new RoutedEventArgs(Frame.LoadedEvent, vehicleBorder));
             }
         }
 
