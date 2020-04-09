@@ -385,18 +385,17 @@ namespace RushHour
         // AND IF THE REMAINDER OF THE RESULT IS GREATER THAN HALF THE CELL'S WIDTH/HEIGHT, SNAP THE BORDER/VEHICLE TO THE CELL OF THE CEILING
         // OF SAID RESULT, OTHERWISE SNAP IT TO THE CELL OF THE FLOOR OF SAID RESULT. SOMETHING LIKE THIS.
 
-        private Point _anchorPoint;
-        private Point _currentPoint;
+        private Point _anchorMousePoint;
+        private Point _currentMousePoint;
         private int openCellsBehind;
         private int openCellsAhead;
         private Border _furthestOpenCellBehind;
         private Border _nearestOccupiedCellAhead;
         private bool _isInDrag;
-        //private double _spaceAhead;
-        //private double _spaceBehind;
+        private Point _lastMousePoint;
         //private readonly TranslateTransform _transform = new TranslateTransform(); // ORIGINAL
         //private TranslateTransform _transform = new TranslateTransform(); // BORDERS DISAPPEAR ON DRAG
-        private TranslateTransform _transform; // BORDER SNAPS TO ORIGINAL POSITION ON SECOND DRAG
+        //private TranslateTransform _transform; // BORDER SNAPS TO ORIGINAL POSITION ON SECOND DRAG
 
         private void root_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
@@ -409,28 +408,21 @@ namespace RushHour
             _selected.Focus(); // TODO: IS THIS EVEN NEEDED?
             // END COPY FROM Border_MouseLeftButtonDown
             
-            _transform = new TranslateTransform(); // ADDED, NOT IN HERE ORIGINALLY, CAUSES BORDERS TO SHOOT OFF SCREEN VS BEING INSTANTIATED IN MOUSEMOVE WHERE IT WORKS AS DESIRED
+            //_transform = new TranslateTransform(); // ADDED, NOT IN HERE ORIGINALLY, CAUSES BORDERS TO SHOOT OFF SCREEN VS BEING INSTANTIATED IN MOUSEMOVE WHERE IT WORKS AS DESIRED
             
             
             // ORIGINAL
             var element = sender as FrameworkElement;
-            //_anchorPoint = e.GetPosition(null); // ORIGINAL
-            //_anchorPoint = e.GetPosition(gameGrid);
-            _anchorPoint = Mouse.GetPosition(gameGrid); // BORDER DRAGS WITH POINTER AS DESIRED (SAME BEHAVIOR AS ABOVE TWO?)
-            //_anchorPoint.X = e.GetPosition(gameGrid).X - _transform.X;
-            //_anchorPoint.Y = e.GetPosition(gameGrid).Y - _transform.Y;
-            //_anchorPoint.X = e.GetPosition(gameGrid).X;// -_transform.X; 
-            //_anchorPoint.Y = e.GetPosition(gameGrid).Y;// -_transform.Y; 
-            anchorPositionActual.Content = string.Format("({0}, {1})", (int)_anchorPoint.X, (int)_anchorPoint.Y);
+            //_anchorMousePoint = e.GetPosition(null); // ORIGINAL
+            //_anchorMousePoint = e.GetPosition(gameGrid);
+            _anchorMousePoint = _lastMousePoint = Mouse.GetPosition(gameGrid); // BORDER DRAGS WITH POINTER AS DESIRED (SAME BEHAVIOR AS ABOVE TWO?)
+            //_anchorMousePoint.X = e.GetPosition(gameGrid).X - _transform.X;
+            //_anchorMousePoint.Y = e.GetPosition(gameGrid).Y - _transform.Y;
+            //_anchorMousePoint.X = e.GetPosition(gameGrid).X;// -_transform.X; 
+            //_anchorMousePoint.Y = e.GetPosition(gameGrid).Y;// -_transform.Y; 
+            anchorPositionActual.Content = string.Format("({0}, {1})", (int)_anchorMousePoint.X, (int)_anchorMousePoint.Y);
 
-            // calculate how far the vehicle can move in either direction
             string vehicleID = _bordersToVIDs[_selected];
-            //double cellSize = gameGrid.RowDefinitions[0].ActualHeight;//ALWAYS RETURNS 133 REGARDLESS OF CELL SIZE. WHY?
-            //_spaceAhead = _grid.GetOpenCells(vehicleID, true) * cellSize;
-            //_spaceBehind = _grid.GetOpenCells(vehicleID, false) * cellSize;
-            //aheadActual.Content = string.Format("{0}", (int)_spaceAhead);
-            //behindActual.Content = string.Format("{0}", (int)_spaceBehind);
-
             openCellsBehind = _grid.GetOpenCells(vehicleID, false);
             openCellsAhead = _grid.GetOpenCells(vehicleID, true);
             VehicleStruct v = _grid.GetVehicleStuct(vehicleID); 
@@ -466,10 +458,9 @@ namespace RushHour
                     _nearestOccupiedCellAhead = _cellBorders[v.row + v.length + openCellsAhead, v.column];
                     distanceAhead = _selected.TranslatePoint(new Point(0, _selected.ActualHeight), _nearestOccupiedCellAhead).Y; // delete this
                 }
-                // delete this
-                behindActual.Content = string.Format("{0}", (int)distanceBehind);
-                aheadActual.Content = string.Format("{0}", (int)distanceAhead);
-                // end delete this
+
+                behindActual.Content = string.Format("{0}", (int)distanceBehind); // delete this
+                aheadActual.Content = string.Format("{0}", (int)distanceAhead); // delete this
             }
             // horizontal vehicle
             else
@@ -526,20 +517,22 @@ namespace RushHour
                 
                 //var element = sender as FrameworkElement;
                 Border vehicleBorder = sender as Border;
-                //_currentPoint = e.GetPosition(null);// ORIGINAL
-                //_currentPoint = e.GetPosition(gameGrid);
-                //_currentPoint = Mouse.GetPosition(null); // BORDER FALLS BEHIND POINTER DURING DRAG (SAME BEHAVIOR AS ABOVE?)
-                _currentPoint = Mouse.GetPosition(gameGrid); // BORDER DRAGS WITH POINTER AS DESIRED
-                currentPositionActual.Content = string.Format("({0}, {1})", (int)_currentPoint.X, (int)_currentPoint.Y); // delete this
+                //_currentMousePoint = e.GetPosition(null);// ORIGINAL
+                //_currentMousePoint = e.GetPosition(gameGrid);
+                //_currentMousePoint = Mouse.GetPosition(null); // BORDER FALLS BEHIND POINTER DURING DRAG (SAME BEHAVIOR AS ABOVE?)
+                _currentMousePoint = Mouse.GetPosition(gameGrid); // BORDER DRAGS WITH POINTER AS DESIRED
+                currentPositionActual.Content = string.Format("({0}, {1})", (int)_currentMousePoint.X, (int)_currentMousePoint.Y); // delete this
 
                 string vehicleID = _bordersToVIDs[vehicleBorder];
                 VehicleStruct v = _grid.GetVehicleStuct(vehicleID);
 
                 // TODO: WHAT ABOUT TRYING TO MOVE A HORIZONTAL VEHICLE VERTICALLY OR VICE VERSA? THEN, FOR EXAMPLE,
-                // YOU END UP IN THE HORIZONTAL BLOCK BUT deltaX IS ZERO AND deltaY IS NON-ZERO
+                // YOU END UP IN THE HORIZONTAL BLOCK BUT distanceFromAnchor IS ZERO AND deltaY IS NON-ZERO
+
+
                 if (v.vertical)
                 {
-                    double deltaY = _currentPoint.Y - _anchorPoint.Y; // WORKS PRETTY WELL, BUT BORDER CAN GO SLIGHTLY BEYOND BOUNDARY
+                    double deltaY = _currentMousePoint.Y - _anchorMousePoint.Y; // WORKS PRETTY WELL, BUT BORDER CAN GO SLIGHTLY BEYOND BOUNDARY
                     deltaActual.Content = string.Format("{0}", (int)deltaY); // delete this
 
                     if (deltaY < 0)  // moving up
@@ -547,20 +540,11 @@ namespace RushHour
                         double spaceAbove = vehicleBorder.TranslatePoint(new Point(0, 0), _furthestOpenCellBehind).Y;
                         behindActual.Content = string.Format("{0}", (int)spaceAbove); // delete this
 
-                        //if (_grid.IsCellOpen(v.row - 1, v.column))
-                        //if (_spaceBehind > 0)
                         if (spaceAbove > 0)
                         {
                             _transform.Y += deltaY;
-                            //_transform.Y += spaceOnLeft;
-                            //_spaceAhead += deltaY / 133.0;
-                            //_spaceBehind += deltaY / 133.0;
                             vehicleBorder.RenderTransform = _transform;
                         }
-                        //else
-                        //{
-                        //    _anchorPoint = _currentPoint;
-                        //}
                     }   
                     else if (deltaY > 0) // moving down
                     {
@@ -577,78 +561,69 @@ namespace RushHour
 
                         aheadActual.Content = string.Format("{0}", (int)spaceBelow);
 
-                        //if (_grid.IsCellOpen(v.row + v.length, v.column))
-                        //if (_spaceAhead > 0)
                         if (spaceBelow < 0)
                         {
                             _transform.Y += deltaY;
-                            //_spaceAhead -= deltaY / 133.0;
-                            //_spaceBehind += deltaY / 133.0;
                             vehicleBorder.RenderTransform = _transform;
                         }
-                        //else
-                        //{
-                        //    _anchorPoint = _currentPoint;
-                        //}
                     }                                    
                 }
+
+
+
                 // horizontal
                 else
                 {
-                    double deltaX = _currentPoint.X - _anchorPoint.X;
-                    deltaActual.Content = string.Format("{0}", (int)deltaX); // delete this
-                    
-                    if (deltaX < 0) // moving left
+                    double distanceFromAnchor = _currentMousePoint.X - _anchorMousePoint.X;
+                    double mousePointDeltaX = _currentMousePoint.X - _lastMousePoint.X;
+
+                    deltaActual.Content = string.Format("{0}", (int)distanceFromAnchor); // delete this
+                    deltaChangeActual.Content = string.Format("{0}", mousePointDeltaX); // delete this
+
+                    // TODO: THIS CURRENT SYSTEM HAS A FLAW: ONCE THE BORDER STOPS DRAGGING/RENDERING BECAUSE, FOR EXAMPLE, 
+                    // IT RUNS OUT OF SPACE ON THE RIGHT, BUT YOU CONTINUE TO MOVE THE CURSOR RIGHT WITH THE LEFT MOUSE BUTTON DOWN
+                    // AND HENCE CONTINUE TO INCREASE THE DISTANCE FROM THE ANCHOR POINT, THE INSTANT YOU MOVE THE MOUSE LEFT (AND
+                    // I BELIEVE THERE SHOULD ALWAYS SPACE ON THE LEFT A THIS POINT) IT WILL RENDER THE TRANSFORM (WHICH WILL BE
+                    // THAT DISTANCE FROM THE ANCHOR POINT) AND HENCE THE BORDER WILL SHOOT RIGHT ACCORDING TO HOW FAR YOU CONTINUED
+                    // TO MOVE THE CURSOR PAST WHERE THE BORDER STOPPED RENDERING.
+                    if (mousePointDeltaX < 0)
+                    //if (distanceFromAnchor < 0) // moving left
                     {
                         double spaceOnLeft = vehicleBorder.TranslatePoint(new Point(0, 0), _furthestOpenCellBehind).X;
                         behindActual.Content = string.Format("{0}", (int)spaceOnLeft); // delete this
+                        directionActual.Content = "Left"; // delete this
 
-                        //if (_grid.IsCellOpen(v.row - 1, v.column))
-                        //if (_spaceBehind > 0)
                         if (spaceOnLeft > 0)
                         {
-                            _transform.X += deltaX;
-                            //_transform.X += spaceOnLeft;
-                            //_spaceAhead += deltaX / 133.0;
-                            //_spaceBehind += deltaX / 133.0;
+                            _transform.X += distanceFromAnchor;
                             vehicleBorder.RenderTransform = _transform;
                         }
-                        //else
-                        //{
-                        //    _anchorPoint = _currentPoint;
-                        //}
                     }
-                    else if (deltaX > 0) // moving right
+                    else if (mousePointDeltaX > 0) // moving right
                     {
                         double spaceOnRight;
 
                         // TODO: THIS WON'T WORK BECAUSE IT'S NOT DYNAMIC, ONCE YOU MOVE LEFT YOU SHOULD BE ABLE TO MOVE BACK RIGHT
-                        if (openCellsAhead == 0)
-                        {
-                            spaceOnRight = 0;
-                        }
-                        else
-                        {
-                            spaceOnRight = vehicleBorder.TranslatePoint(new Point(vehicleBorder.ActualWidth, 0), _nearestOccupiedCellAhead).X;
-                        }
-                        aheadActual.Content = string.Format("{0}", (int)spaceOnRight);
-
-                        
-                        //if (_grid.IsCellOpen(v.row + v.length, v.column))
-                        //if (_spaceAhead > 0)
-                        if (spaceOnRight < 0)
-                        {
-                            _transform.X += deltaX;
-                            //_spaceAhead -= deltaX / 133.0;
-                            //_spaceBehind += deltaX / 133.0;
-                            vehicleBorder.RenderTransform = _transform;
-                        }
+                        //if (openCellsAhead == 0)
+                        //{
+                        //    spaceOnRight = 0;
+                        //}
                         //else
                         //{
-                        //    _anchorPoint = _currentPoint;
+                            spaceOnRight = vehicleBorder.TranslatePoint(new Point(vehicleBorder.ActualWidth, 0), _nearestOccupiedCellAhead).X;
                         //}
+                        aheadActual.Content = string.Format("{0}", (int)spaceOnRight); // delete this
+                        directionActual.Content = "Right"; // delete this
+
+                        
+                        if (spaceOnRight < 0)
+                        {
+                            _transform.X += distanceFromAnchor;
+                            vehicleBorder.RenderTransform = _transform;
+                        }
                     }     
                 }
+                _lastMousePoint = _currentMousePoint;
                 //this.RenderTransform = _transform; // ORIGINAL
                 //vehicleBorder.RenderTransform = _transform; // SEEMS TO MAKE NO DIFFERENCE IF THIS IS HERE OR IN EACH IF/ELSE ABOVE
                 //aheadActual.Content = string.Format("{0}", (int)_spaceAhead);

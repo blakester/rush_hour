@@ -43,7 +43,7 @@
  
 
             <StackPanel Orientation="Horizontal" Grid.Row="1">
-            <Button x:Name="solutionMoveButton" Margin="0,0,0,10" Content="Next Solution Move" Width="150" HorizontalAlignment="Left" Padding="3" Click="solutionMoveButton_Click"/>
+            <Button x:Name="solutionMoveButton" Margin="0,0,0,10" Content="Next Solution Move" Width="50" HorizontalAlignment="Left" Padding="3" Click="solutionMoveButton_Click"/>
                 <StackPanel>
                     <StackPanel Orientation="Horizontal">
                         <Label x:Name="positionLabel" Content="Mouse Grid Coordinates:"/>
@@ -79,6 +79,16 @@
                         <Label x:Name="behindLabel" Content="Space Behind:"/>
                         <Label x:Name="behindActual"/>
                     </StackPanel>-->
+                </StackPanel>
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <Label x:Name="deltachangeLabel" Content="Delta Change:"/>
+                        <Label x:Name="deltaChangeActual"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <Label x:Name="directionLabel" Content="Direction:"/>
+                        <Label x:Name="directionActual"/>
+                    </StackPanel>
                 </StackPanel>
 
                 <!--<Button x:Name="solutionUndoButton" Content="Undo Solution Move" Width="auto" Padding="3" Click="solutionMoveButton_Click"/>-->
