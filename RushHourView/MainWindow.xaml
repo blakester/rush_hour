@@ -68,7 +68,7 @@
                         <Label x:Name="aheadActual"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal">
-                        <Label x:Name="deltaLabel" Content="Delta:"/>
+                        <Label x:Name="deltaLabel" Content="AnchDist:"/>
                         <Label x:Name="deltaActual"/>
                     </StackPanel>
                     <!--<StackPanel Orientation="Horizontal">
@@ -82,12 +82,16 @@
                 </StackPanel>
                 <StackPanel>
                     <StackPanel Orientation="Horizontal">
-                        <Label x:Name="deltachangeLabel" Content="Delta Change:"/>
+                        <Label x:Name="deltachangeLabel" Content="AnchDistDelta:"/>
                         <Label x:Name="deltaChangeActual"/>
                     </StackPanel>
-                    <StackPanel Orientation="Horizontal">
+                    <StackPanel Orientation="Horizontal" Margin="0,-10">
                         <Label x:Name="directionLabel" Content="Direction:"/>
                         <Label x:Name="directionActual"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <Label x:Name="relativePos" Content="Relative:"/>
+                        <Label x:Name="relativePosActual"/>
                     </StackPanel>
                 </StackPanel>
 
