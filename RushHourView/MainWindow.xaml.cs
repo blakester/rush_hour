@@ -13,6 +13,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using RushHourModel;
+using System.Threading;
 
 namespace RushHour
 {
@@ -131,7 +132,7 @@ namespace RushHour
                 // set up event handlers for the Border
                 vehicleBorder.Focusable = true;
                 
-
+                
                 // OPTION 1 - SELECT BORDER WITH MouseLeftButtonDown EVENT
                 //vehicleBorder.MouseLeftButtonDown += new MouseButtonEventHandler(Border_MouseLeftButtonDown);
                 // THIS SHOULD BE EQUIVALENT TO STATEMENT ABOVE
@@ -283,8 +284,12 @@ namespace RushHour
 
         private void border_KeyDown(object sender, KeyEventArgs e)
         {
-            //if (_selected == null)
-            //    return;
+            if (_isInDrag)
+            {
+                e.Handled = true;
+                return;
+            }
+
             Border border = (Border)sender;
             bool vertical = Grid.GetRowSpan(border) > 1;
 
@@ -339,6 +344,12 @@ namespace RushHour
         // POSITION SHOWING WHERE THE VEHICLE *WOULD* MOVE TO UPON RELEASING THE MOUSE BUTTON, RATHER THAN ACTUALLY RENDERING THE VEHICLE
         // WITH EACH MOUSE MOVEMENT.
 
+        // NOW THAT I HAVE A BETTER UNDERSTANDING OF THINGS, IS IT POSSIBLE TO DITCH THE TRANSLATEPOINT TECHNIQUE IN MOUSEMOVE?
+        // MAYBE I COULD GO BACK TO MY OLD IDEA AND BASICALLY JUST USE THE distanceFromAnchor AND/OR changeInDistanceFromAnchor
+        // TO DETERMINE BOUNDARIES. THE POSSIBLE BENEFIT I'D SEE TO THIS IS IT COULD BE FASTER DOING SOME ARITHMETIC RATHER THAN
+        // HAVING TO CALL TRANSLATEPOINT, AND ITS POSSIBLE THAT THE spaceAhead/Behind VALUES IT RETURNS ARE PART OF THE PROBLEM.
+        // I'D STILL USE TRANSLATEPOINT, HOWEVER, IN THE MOUSE DOWN TO DETERMINE THE INITIAL DISTANCES.
+
         private Point _anchorMousePoint;
         private Point _currentMousePoint;
         private int _openCellsBehind;
@@ -348,7 +359,7 @@ namespace RushHour
         private bool _isInDrag;
         private Point _lastMousePoint;
         private Point _initialMousePosRelativeToBorder;
-        //private readonly TranslateTransform _transform = new TranslateTransform(); // ORIGINAL
+        private readonly TranslateTransform _transform = new TranslateTransform(); // ORIGINAL
         //private TranslateTransform _transform = new TranslateTransform(); // BORDERS DISAPPEAR ON DRAG
         //private TranslateTransform _transform; // BORDER SNAPS TO ORIGINAL POSITION ON SECOND DRAG
 
@@ -378,7 +389,7 @@ namespace RushHour
             //_anchorMousePoint.Y = e.GetPosition(gameGrid).Y;// -_transform.Y; 
             anchorPositionActual.Content = string.Format("({0}, {1})", (int)_anchorMousePoint.X, (int)_anchorMousePoint.Y); // delete
             relativePosActual.Content = string.Format("({0}, {1})", (int)_initialMousePosRelativeToBorder.X, (int)_initialMousePosRelativeToBorder.Y); // delete
-
+            
             string vehicleID = _bordersToVIDs[_selected];
             _openCellsBehind = _grid.GetOpenCells(vehicleID, false);
             _openCellsAhead = _grid.GetOpenCells(vehicleID, true);
@@ -466,7 +477,7 @@ namespace RushHour
         {
             if (_isInDrag)
             {         
-                TranslateTransform _transform = new TranslateTransform(); // ORIGINAL
+                //TranslateTransform _transform = new TranslateTransform(); // ORIGINAL
                 //_transform = new TranslateTransform();
                 
                 //var element = sender as FrameworkElement;
@@ -502,15 +513,7 @@ namespace RushHour
                     else if (deltaY > 0) // moving down
                     {
                         double spaceBelow;
-
-                        //if (_openCellsAhead == 0)
-                        //{
-                        //    spaceBelow = 0;
-                        //}
-                        //else
-                        //{
-                            spaceBelow = vehicleBorder.TranslatePoint(new Point(0.0, vehicleBorder.ActualHeight), _nearestOccupiedCellAhead).Y;
-                        //}
+                        spaceBelow = vehicleBorder.TranslatePoint(new Point(0.0, vehicleBorder.ActualHeight), _nearestOccupiedCellAhead).Y;
 
                         aheadActual.Content = string.Format("{0}", (int)spaceBelow);
 
@@ -558,43 +561,37 @@ namespace RushHour
 
                         if (spaceOnLeft > 0)
                         {
-                            _transform.X += distanceFromAnchor;
+                            _transform.X = distanceFromAnchor;
                             vehicleBorder.RenderTransform = _transform;
                         }
                     }
                     else if (mousePointDeltaX > 0) // moving right
                     {
-                        double spaceOnRight;
-
-                        // TODO: THIS WON'T WORK BECAUSE IT'S NOT DYNAMIC, ONCE YOU MOVE LEFT YOU SHOULD BE ABLE TO MOVE BACK RIGHT
-                        //if (_openCellsAhead == 0)
-                        //{
-                        //    spaceOnRight = 0;
-                        //}
-                        //else
-                        //{
-                            spaceOnRight = vehicleBorder.TranslatePoint(new Point(vehicleBorder.ActualWidth, 0), _nearestOccupiedCellAhead).X;
-                        //}
+                        double spaceOnRight;                        
+                        spaceOnRight = vehicleBorder.TranslatePoint(new Point(vehicleBorder.ActualWidth, 0), _nearestOccupiedCellAhead).X;
+                        
                         aheadActual.Content = string.Format("{0}", (int)spaceOnRight); // delete this
                         directionActual.Content = "Right"; // delete this
-
-
-                        //if (spaceOnRight < 0 && mousePointDeltaX <= Math.Abs(spaceOnRight))
+                       
                         
                         // I DON'T UNDERSTAND HOW MY LOGIC WOULD ALLOW IT (UNLESS I'M MISSING SOMETHING), BUT IF YOU CONTINUALLY
                         // SMASH THE VEHICLE INTO THE RIGHT BOUNDARY VERY QUICKLY, IT EVENTUALLY BREAKS THROUGH (USALLY WITHIN ~40 ATTEMPTS).
                         // IS IT A PROBLEM WITH MY LOGIC, OR IS IT SIMPLY A TIMING ERROR THAT I CANT DO ANYTHING ABOUT?
+                        // PERHAPS THE RENDERING ISN'T KEEPING UP WITH THE MOUSE MOVEMENTS, I.E. ON MOVEMENT C IT'S BASING
+                        // HOW FAR IT CAN GO ACCORDING TO THE VEHICLE'S POSITION AT MOVEMENT A AND THEREFORE THINKS IT CAN GO
+                        // FARTHER THAN IT REALLY CAN.
 
                         // only render the vehicle if the amount it will move is within the available space
-                        if (spaceOnRight + mousePointDeltaX <= 0)
+                        double remainingSpace = spaceOnRight + mousePointDeltaX;
+                        if (remainingSpace <= 0)
                         {
-                            _transform.X += distanceFromAnchor;
+                            _transform.X = distanceFromAnchor;
                             vehicleBorder.RenderTransform = _transform;
                         }
-                        // use all available space if there's any
+                        // otherwise use all available space if there's any
                         else if (spaceOnRight < 0)
                         {
-                            _transform.X += (distanceFromAnchor - (spaceOnRight + mousePointDeltaX));
+                            _transform.X = distanceFromAnchor - remainingSpace;
                             vehicleBorder.RenderTransform = _transform;
                         }
                         // if somehow the vehicle moved past the boundary, simply reset it
