@@ -131,7 +131,7 @@ namespace RushHour
 
                 // set up event handlers for the Border
                 vehicleBorder.Focusable = true;
-                vehicleBorder.MouseLeave += vehicleBorder_MouseLeave;
+                //vehicleBorder.MouseLeave += vehicleBorder_MouseLeave;
                 
                 // OPTION 1 - SELECT BORDER WITH MouseLeftButtonDown EVENT
                 //vehicleBorder.MouseLeftButtonDown += new MouseButtonEventHandler(Border_MouseLeftButtonDown);
@@ -163,11 +163,11 @@ namespace RushHour
             }            
         }
 
-        void vehicleBorder_MouseLeave(object sender, MouseEventArgs e)
-        {
-            if (_isInDrag)
-                throw new NotImplementedException();
-        }
+        //void vehicleBorder_MouseLeave(object sender, MouseEventArgs e)
+        //{
+        //    if (_isInDrag)
+        //        throw new NotImplementedException();
+        //}
 
         // END EXPERIMENTATION
 
@@ -359,8 +359,8 @@ namespace RushHour
         private Point _anchorMousePoint;
         private Point _currentMousePoint;
         private Point _lastMousePoint;
-        private double _distanceBehind;
-        private double _distanceAhead;
+        private double _distanceBehind; // space to left/top-most boundary (greater than or equal to zero)
+        private double _distanceAhead;  // space to right/bottom-most boundary (less than or equal to zero)
         private bool _isInDrag;
         private readonly TranslateTransform _transform = new TranslateTransform(); // ORIGINAL
         //private TranslateTransform _transform = new TranslateTransform(); // BORDERS DISAPPEAR ON DRAG
@@ -466,12 +466,24 @@ namespace RushHour
             {
                 Border vehicleBorder = sender as Border;
                 _currentMousePoint = e.GetPosition(gameGrid); // BORDER DRAGS WITH POINTER AS DESIRED
+                
 
                 double mousePointDeltaX = _currentMousePoint.X - _lastMousePoint.X;
                 double mousePointDeltaY = _currentMousePoint.Y - _lastMousePoint.Y;
+                _lastMousePoint = _currentMousePoint;
 
                 string vehicleID = _bordersToVIDs[vehicleBorder];
                 VehicleStruct v = _grid.GetVehicleStuct(vehicleID);
+
+                double mouseRelativeToVehicle = e.GetPosition(vehicleBorder).X;
+                bool mouseOutsideRange = mouseRelativeToVehicle < 0 || mouseRelativeToVehicle > vehicleBorder.ActualWidth;
+                relativePosActual.Content = string.Format("{0}", (int)mouseRelativeToVehicle); // delete this
+
+                if (mouseOutsideRange && (_distanceBehind == 0 || _distanceAhead == 0))
+                {
+                    e.Handled = true;
+                    return;
+                }
 
                 if (v.vertical)
                 {
@@ -479,9 +491,13 @@ namespace RushHour
                 // horizontal
                 else
                 {
+
+
                     // moving left
                     if (mousePointDeltaX < 0)
                     {
+
+                        
                         // only render the vehicle if the amount it will move is within the available space
                         // (_distanceBehind is always >= 0, so check if the added (negative) delta is in that range)
                         if (_distanceBehind + mousePointDeltaX >= 0)
@@ -525,9 +541,9 @@ namespace RushHour
 
                     }
                 }
-                _lastMousePoint = _currentMousePoint;
                 behindActual.Content = string.Format("{0}", (int)_distanceBehind); // delete this            
                 aheadActual.Content = string.Format("{0}", (int)_distanceAhead); // delete this
+                
             }
         }
 
