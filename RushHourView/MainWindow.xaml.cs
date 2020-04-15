@@ -29,7 +29,7 @@ namespace RushHour
         private VehicleGrid _grid;
         private int _initialConfig = 1;
 
-        
+
         public MainWindow()
         {
             InitializeComponent();
@@ -37,7 +37,7 @@ namespace RushHour
             configEntryBox.Text = _initialConfig.ToString();
             SetGameGrid();
             //Panel.SetZIndex(solutionMoveButton, -1); // MAY BE USEFUL FOR VEHEICLES/BORDERS TO SIT ABOVE A GRID IMAGE
- 
+
             // DRAGGABLE CONTROL EXPERIMENTATION
             //nextConfigButton.PreviewMouseLeftButtonDown += new MouseButtonEventHandler(root_MouseLeftButtonDown);
             //nextConfigButton.MouseMove += new MouseEventHandler(root_MouseMove);
@@ -54,7 +54,7 @@ namespace RushHour
             gameGrid.RowDefinitions.Clear();
             gameGrid.ColumnDefinitions.Clear();
             _cellBorders = new Border[_grid.Rows + 1, _grid.Columns + 1]; // plus one for hidden cells
-            
+
             // set gameGrid rows and columns according to the configuration
             for (int i = 0; i <= _grid.Rows; i++)
             {
@@ -62,7 +62,7 @@ namespace RushHour
                 //rowDef.Height = new GridLength(1.0, GridUnitType.Star);
                 //gameGrid.RowDefinitions.Add(rowDef);
                 gameGrid.RowDefinitions.Add(new RowDefinition());
-            }            
+            }
             for (int i = 0; i <= _grid.Columns; i++)
             {
                 //ColumnDefinition colDef = new ColumnDefinition();
@@ -80,7 +80,7 @@ namespace RushHour
             for (int i = 0; i <= _grid.Rows; i++) // TODO: CHANGE BACK TO i = 0
             {
                 for (int j = 0; j <= _grid.Columns; j++)
-                {                     
+                {
                     // add the cell to the grid and cell borders array
                     Border cellBorder = new Border();
                     gameGrid.Children.Add(cellBorder);
@@ -106,14 +106,14 @@ namespace RushHour
                 }
             }
             // END DRAGGABLE VEHICLES EXPERIMENTATION
-            
+
             // represent each Vehicle as a Border
             foreach (VehicleStruct vd in _grid.GetVehicleStucts())
             {
                 Border vehicleBorder = new Border();
                 vehicleBorder.BorderThickness = new Thickness(8);
                 vehicleBorder.CornerRadius = new CornerRadius(15);
-                
+
                 // the target "X" vehicle is red, all others are gray
                 if (vd.id.Equals("X"))
                     vehicleBorder.Background = Brushes.Red;
@@ -132,12 +132,12 @@ namespace RushHour
                 // set up event handlers for the Border
                 vehicleBorder.Focusable = true;
                 //vehicleBorder.MouseLeave += vehicleBorder_MouseLeave;
-                
+
                 // OPTION 1 - SELECT BORDER WITH MouseLeftButtonDown EVENT
                 //vehicleBorder.MouseLeftButtonDown += new MouseButtonEventHandler(Border_MouseLeftButtonDown);
                 // THIS SHOULD BE EQUIVALENT TO STATEMENT ABOVE
                 //vehicleBorder.AddHandler(Border.MouseLeftButtonDownEvent, new RoutedEventHandler(Border_MouseLeftButtonDown));              
-                
+
                 // OPTION 2 - SELECT BORDER BY GIVING IT KEYBOARD FOCUS
                 //vehicleBorder.MouseLeftButtonDown += new MouseButtonEventHandler(Border_PreviewMouseDown); // ALSO WORKS FOR PREVIEW EVENT
                 //vehicleBorder.AddHandler(Border.GotKeyboardFocusEvent, new RoutedEventHandler(Border_GotFocus));
@@ -148,19 +148,19 @@ namespace RushHour
                 vehicleBorder.PreviewMouseLeftButtonUp += new MouseButtonEventHandler(root_MouseLeftButtonUp);
                 vehicleBorder.MouseEnter += (s, e) => Mouse.OverrideCursor = Cursors.Hand;
                 vehicleBorder.MouseLeave += (s, e) => Mouse.OverrideCursor = Cursors.Arrow;
-                 
+
                 vehicleBorder.KeyDown += new KeyEventHandler(border_KeyDown);
 
                 // position the Border on the _grid
                 Grid.SetRow(vehicleBorder, vd.row);
                 Grid.SetColumn(vehicleBorder, vd.column);
                 //Panel.SetZIndex(vehicleBorder, 0);
-                
+
                 // add the Border and Vehicle to lookup tables
                 _bordersToVIDs.Add(vehicleBorder, vd.id);
                 _vIDsToBorders.Add(vd.id, vehicleBorder);
                 solutionMoveButton.IsEnabled = true;
-            }            
+            }
         }
 
         //void vehicleBorder_MouseLeave(object sender, MouseEventArgs e)
@@ -245,7 +245,7 @@ namespace RushHour
             int config = Int32.Parse(configEntryBox.Text); // THIS NEEDS TO BE VALIDATED, OR NON-NUMBERS SHOULD BE PROHIBITIED AT ENTRY
             _grid.SetConfig(config);
             configEntryBox.Text = _grid.CurrentConfig.ToString();
-            SetGameGrid();            
+            SetGameGrid();
         }
 
         private void configEntryBox_KeyDown(object sender, KeyEventArgs e)
@@ -262,7 +262,7 @@ namespace RushHour
         {
             _grid.SetConfig(0);
             configEntryBox.Text = _grid.CurrentConfig.ToString();
-            SetGameGrid(); 
+            SetGameGrid();
         }
 
         private void previousConfigButton_Click(object sender, RoutedEventArgs e)
@@ -290,7 +290,8 @@ namespace RushHour
 
         private void border_KeyDown(object sender, KeyEventArgs e)
         {
-            if (_isInDrag)
+            //if (_isInDrag)
+            if (Mouse.LeftButton == MouseButtonState.Pressed) // ALTERNATIVE TO ABOVE
             {
                 e.Handled = true;
                 return;
@@ -361,7 +362,7 @@ namespace RushHour
         private Point _lastMousePoint;
         private double _spaceBehind; // space to left/top-most boundary (greater than or equal to zero)
         private double _spaceAhead;  // space to right/bottom-most boundary (less than or equal to zero)
-        private bool _isInDrag;
+        private bool _isInDrag; // TODO: IS THIS NEEDED? IT SEEMS SIMPLY CHECKING IF MOUSELEFTBUTTON == PRESSED IN MOUSEMOVE IS SUFFICIENT
         private readonly TranslateTransform _transform = new TranslateTransform(); // ORIGINAL
         //private TranslateTransform _transform = new TranslateTransform(); // BORDERS DISAPPEAR ON DRAG
         //private TranslateTransform _transform; // BORDER SNAPS TO ORIGINAL POSITION ON SECOND DRAG
@@ -376,17 +377,15 @@ namespace RushHour
             _selected.BorderBrush = Brushes.Blue;
             _selected.Focus(); // TODO: IS THIS EVEN NEEDED?
             // END COPY FROM Border_MouseLeftButtonDown
-            
+
             //_transform = new TranslateTransform(); // ADDED, NOT IN HERE ORIGINALLY, CAUSES BORDERS TO SHOOT OFF SCREEN VS BEING INSTANTIATED IN MOUSEMOVE WHERE IT WORKS AS DESIRED
-            _transform.X = 0;
-            _transform.Y = 0;
-            
+
             // ORIGINAL
             var element = sender as FrameworkElement;
-            _anchorMousePoint =  e.GetPosition(gameGrid); // BORDER DRAGS WITH POINTER AS DESIRED (SAME BEHAVIOR AS ABOVE TWO?)
+            _anchorMousePoint = e.GetPosition(gameGrid); // BORDER DRAGS WITH POINTER AS DESIRED (SAME BEHAVIOR AS ABOVE TWO?)
             _lastMousePoint = e.GetPosition(gameGrid);
             anchorPositionActual.Content = string.Format("({0}, {1})", (int)_anchorMousePoint.X, (int)_anchorMousePoint.Y); // delete
-            
+
             string vehicleID = _bordersToVIDs[_selected];
             int openCellsBehind = _grid.GetOpenCells(vehicleID, false);
             int openCellsAhead = _grid.GetOpenCells(vehicleID, true);
@@ -408,7 +407,7 @@ namespace RushHour
                     // set the boundary cell to the furthest open cell spaceOnLeft (i.e. above)
                     furthestOpenCellBehind = _cellBorders[v.row - openCellsBehind, v.column];
                     _spaceBehind = _selected.TranslatePoint(new Point(0, 0), furthestOpenCellBehind).Y;
-                }                
+                }
 
                 // set nearestOccupiedCellAhead
                 if (openCellsAhead == 0)
@@ -455,16 +454,26 @@ namespace RushHour
             if (element != null)
                 element.CaptureMouse();
 
-            _isInDrag = true;
+            //_isInDrag = true;
             e.Handled = true;
         }
 
-        
+
+
         private void root_MouseMove(object sender, MouseEventArgs e)
         {
-            if (_isInDrag)
-            {
+            //if (_isInDrag)
+            if (Mouse.LeftButton == MouseButtonState.Pressed) // FIX 1 (NO FIX 2 NEEDED)
+            {               
+                // TODO: *FIX FOR BELOW FOR BUG*: RELEASING A DRAG ON WITH THE CURSOR OVER A VEHICLE OTHER THAN
+                // THE DRAGGED VEHICLE TRIGGERS THIS HANDLER AND APPLIES THE TRANSFORM TO SAID OTHER VEHICLE.
                 Border vehicleBorder = sender as Border;
+                //if (!vehicleBorder.IsMouseCaptured) // FIX 2 (ALTERNATIVE TO FIX 1)
+                //{
+                //    e.Handled = true;
+                //    return;
+                //}
+                
                 _currentMousePoint = e.GetPosition(gameGrid);
                 bool vertical = Grid.GetRowSpan(vehicleBorder) > 1;
                 double mousePointDelta;
@@ -504,15 +513,15 @@ namespace RushHour
                     if (_spaceBehind + mousePointDelta >= 0)
                     {
                         _transform.X += (vertical ? 0 : mousePointDelta);
-                        _transform.Y += (vertical ? mousePointDelta : 0); 
+                        _transform.Y += (vertical ? mousePointDelta : 0);
                         _spaceBehind += mousePointDelta;
-                        _spaceAhead += mousePointDelta;                                               
+                        _spaceAhead += mousePointDelta;
                     }
                     // the pending delta is too far; use all the space and place vehicle at the back boundary
                     else
                     {
                         _transform.X -= (vertical ? 0 : _spaceBehind);
-                        _transform.Y -= (vertical ? _spaceBehind : 0);                       
+                        _transform.Y -= (vertical ? _spaceBehind : 0);
                         _spaceBehind = 0;
                         _spaceAhead -= _spaceBehind;
                     }
@@ -525,7 +534,7 @@ namespace RushHour
                     // (_spaceAhead is always <= 0, so check if the added delta is in that range)
                     if (_spaceAhead + mousePointDelta <= 0)
                     {
-                         _transform.X += (vertical ? 0 : mousePointDelta);
+                        _transform.X += (vertical ? 0 : mousePointDelta);
                         _transform.Y += (vertical ? mousePointDelta : 0);
                         _spaceBehind += mousePointDelta;
                         _spaceAhead += mousePointDelta;
@@ -536,7 +545,7 @@ namespace RushHour
                         _transform.X -= (vertical ? 0 : _spaceAhead);
                         _transform.Y -= (vertical ? _spaceAhead : 0);
                         _spaceBehind -= _spaceAhead;
-                        _spaceAhead = 0;                        
+                        _spaceAhead = 0;
                     }
                 }
                 vehicleBorder.RenderTransform = _transform;
@@ -544,18 +553,15 @@ namespace RushHour
                 aheadActual.Content = string.Format("{0}", (int)_spaceAhead); // delete this
             }
         }
-               
-                
-        //    }
-        //}
+
 
         private void root_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
-            if (_isInDrag)
-            {
+            //if (_isInDrag)
+            //{
                 var element = sender as FrameworkElement;
-                
-                if (element != null) 
+
+                if (element != null)
                     element.ReleaseMouseCapture();
 
                 _isInDrag = false;
@@ -568,7 +574,7 @@ namespace RushHour
                 vehicleBorder.RenderTransform = null; // only used during drag, we don't want to apply it after setting new position
                 int vehicleRow = Grid.GetRow(vehicleBorder);
                 int vehicleColumn = Grid.GetColumn(vehicleBorder);
-                double cellSize = _cellBorders[0,0].ActualHeight;
+                double cellSize = _cellBorders[0, 0].ActualHeight;
                 bool wasVehicleMoved;
 
                 // TODO: UNLESS I CAN ABSOLUTELY STOP VEHICLES FROM MOVING PAST BOUNDARIES, THIS CODE
@@ -592,13 +598,18 @@ namespace RushHour
                     wasVehicleMoved = _grid.MoveVehicle(_bordersToVIDs[vehicleBorder], spacesMoved);
                 }
 
+                // TODO: I THINK THIS HAS BUGS
                 solutionMoveButton.IsEnabled = !wasVehicleMoved;
+
+                // reset the transform (EITHER IN HERE OR IN MOUSEDOWN)
+                _transform.X = 0;
+                _transform.Y = 0;
 
                 if (_grid.Solved)
                     vehicleBorder.Background = Brushes.Green;
-                
+
                 //vehicleBorder.RaiseEvent(new RoutedEventArgs(Frame.LoadedEvent, vehicleBorder));
-            }
+            //}
         }
 
 
