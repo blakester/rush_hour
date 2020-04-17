@@ -454,7 +454,7 @@ namespace RushHour
             if (element != null)
                 element.CaptureMouse();
 
-            //_isInDrag = true;
+            _isInDrag = true;
             e.Handled = true;
         }
 
@@ -462,17 +462,17 @@ namespace RushHour
 
         private void root_MouseMove(object sender, MouseEventArgs e)
         {
-            //if (_isInDrag)
-            if (Mouse.LeftButton == MouseButtonState.Pressed) // FIX 1 (NO FIX 2 NEEDED)
+            if (_isInDrag)
+            //if (Mouse.LeftButton == MouseButtonState.Pressed) // FIX 1 (COULD NOT REPRODUCE, BUT MULTIPLE VEHICLE TRANSFORM SOMEHOW OCCURED WITH THIS FIX)
             {               
                 // TODO: *FIX FOR BELOW FOR BUG*: RELEASING A DRAG ON WITH THE CURSOR OVER A VEHICLE OTHER THAN
                 // THE DRAGGED VEHICLE TRIGGERS THIS HANDLER AND APPLIES THE TRANSFORM TO SAID OTHER VEHICLE.
                 Border vehicleBorder = sender as Border;
-                //if (!vehicleBorder.IsMouseCaptured) // FIX 2 (ALTERNATIVE TO FIX 1)
-                //{
-                //    e.Handled = true;
-                //    return;
-                //}
+                if (!vehicleBorder.IsMouseCaptured) // FIX 2 (ALTERNATIVE TO FIX 1)
+                {
+                    e.Handled = true;
+                    return;
+                }
                 
                 _currentMousePoint = e.GetPosition(gameGrid);
                 bool vertical = Grid.GetRowSpan(vehicleBorder) > 1;
@@ -492,8 +492,8 @@ namespace RushHour
                     mouseRelativeToVehicle = e.GetPosition(vehicleBorder).X;
                     vehicleExtent = vehicleBorder.ActualWidth;
                 }
-
                 _lastMousePoint = _currentMousePoint;
+
                 bool mouseOutsideRange = mouseRelativeToVehicle < 0 || mouseRelativeToVehicle > vehicleExtent;
 
                 relativePosActual.Content = string.Format("{0}", (int)mouseRelativeToVehicle); // delete this
@@ -501,9 +501,17 @@ namespace RushHour
                 // ignore drags where the mouse isn't over the vehicle
                 if (mouseOutsideRange && (_spaceBehind == 0 || _spaceAhead == 0))
                 {
-                    //e.Handled = true;
+                    e.Handled = true;
                     return;
                 }
+
+                // this function greatly remedies the gap that develops on the forward boundary when dragging a vehicle 
+                // back and forth between boundaries, however repeated super fast drags can still trigger cell-sized gaps
+                Action ResetSpaceAhead = () =>
+                {
+                    double unitSize = _cellBorders[0, 0].ActualHeight * -1;
+                    _spaceAhead = Math.Ceiling(_spaceAhead / unitSize) * unitSize;
+                };
 
                 // moving behind (up/left)
                 if (mousePointDelta < 0)
@@ -523,7 +531,8 @@ namespace RushHour
                         _transform.X -= (vertical ? 0 : _spaceBehind);
                         _transform.Y -= (vertical ? _spaceBehind : 0);
                         _spaceBehind = 0;
-                        _spaceAhead -= _spaceBehind;
+                        //_spaceAhead -= _spaceBehind; // TODO: NEED SOME WAY TO RESET THIS, THIS IS WHERE GAP ERROR IS OCCURING
+                        ResetSpaceAhead();
                     }
                 }
 
@@ -557,8 +566,8 @@ namespace RushHour
 
         private void root_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
-            //if (_isInDrag)
-            //{
+            if (_isInDrag)
+            {
                 var element = sender as FrameworkElement;
 
                 if (element != null)
@@ -577,10 +586,6 @@ namespace RushHour
                 double cellSize = _cellBorders[0, 0].ActualHeight;
                 bool wasVehicleMoved;
 
-                // TODO: UNLESS I CAN ABSOLUTELY STOP VEHICLES FROM MOVING PAST BOUNDARIES, THIS CODE
-                // WILL NEED TO MAKE SURE THE VEHICLE PLACEMENT IS VALID. EITHER SET TO NEAREST VALID
-                // OR RESET COMPLETELY. I'VE BEEN ABLE TO TRIGGER EXCEPTIONS IN HERE BUT I CANT REMEMBER
-                // EXACTLY WHICH ONES, INDEX OUT OF BOUNDS MAYBE?
                 if (Grid.GetRowSpan(vehicleBorder) > 1) // vertical vehicle
                 {
                     Point pointFromTopMostWall = vehicleBorder.TranslatePoint(new Point(0, 0), _cellBorders[0, vehicleColumn]);
@@ -601,15 +606,13 @@ namespace RushHour
                 // TODO: I THINK THIS HAS BUGS
                 solutionMoveButton.IsEnabled = !wasVehicleMoved;
 
-                // reset the transform (EITHER IN HERE OR IN MOUSEDOWN)
+                // reset the transform
                 _transform.X = 0;
                 _transform.Y = 0;
 
-                if (_grid.Solved)
+                if (_grid.Solved) // TURNS ANY VEHICLE GREEN AFTER CLICKING ON IT
                     vehicleBorder.Background = Brushes.Green;
-
-                //vehicleBorder.RaiseEvent(new RoutedEventArgs(Frame.LoadedEvent, vehicleBorder));
-            //}
+            }
         }
 
 
@@ -627,72 +630,4 @@ namespace RushHour
 
 
     }
-
-
-
-
-
-
-
-
-
-    //private void TextBox_PreviewKeyDown(object sender, KeyEventArgs e)
-    //{
-    //    if (e.Key == Key.Left || e.Key == Key.Right || e.Key == Key.Up || e.Key == Key.Down)
-    //    {
-    //        //configEntryBox.MoveFocus(gameGrid);
-    //        e.Handled = true;
-    //    }
-    //}
-
-
-
-
-
-    //private void mainWindow_KeyDown(object sender, KeyEventArgs e)
-    //{
-    //    if (_selected == null)
-    //        return;
-    //    bool vertical = Grid.GetRowSpan(_selected) > 1;
-
-    //    // get ID of _selected Vehicle
-    //    string vID = _bordersToVIDs[_selected];
-
-    //    if (e.Key == Key.Left && !vertical)
-    //    {
-    //        e.Handled = true;
-    //        if (_grid.MoveVehicle(vID, -1))
-    //        {
-    //            int destination = Grid.GetColumn(_selected) - 1;
-    //            Grid.SetColumn(_selected, destination);
-    //        }
-    //    }
-    //    else if (e.Key == Key.Right && !vertical)
-    //    {
-    //        e.Handled = true;
-    //        if (_grid.MoveVehicle(vID, 1))
-    //        {
-    //            int destination = Grid.GetColumn(_selected) + 1;
-    //            Grid.SetColumn(_selected, destination);
-    //        }                    
-    //    }
-    //    else if (e.Key == Key.Up && vertical)
-    //    {
-    //        e.Handled = true;
-    //        if (_grid.MoveVehicle(vID, -1))
-    //        {
-    //            int destination = Grid.GetRow(_selected) - 1;
-    //            Grid.SetRow(_selected, destination);
-    //        }                    
-    //    }
-    //    else if (e.Key == Key.Down && vertical)
-    //    {
-    //        e.Handled = true;
-    //        if (_grid.MoveVehicle(vID, 1))
-    //        {
-    //            int destination = Grid.GetRow(_selected) + 1;
-    //            Grid.SetRow(_selected, destination);
-    //        }
-    //    }            
-    //}
 }
