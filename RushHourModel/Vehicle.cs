@@ -8,8 +8,8 @@ namespace RushHourModel
 {
     public class Vehicle
     {
-        private int backRow, backCol;
-        private readonly bool objectConstructed = false;
+        private int _backRow, _backCol;
+        private readonly bool _objectConstructed = false;
         
         /// <summary>
         /// Orientation of vehicle (true if vertical, fasle if horizontal)
@@ -26,16 +26,16 @@ namespace RushHourModel
         /// </summary>
         public int BackRow          
         {
-            get { return backRow; }
+            get { return _backRow; }
             set
             {
-                if (!Vertical && objectConstructed)
+                if (!Vertical && _objectConstructed)
                     throw new InvalidOperationException("Row cannot change for horizontal Vehicle.");
                 if (value < 0)
                     throw new ArgumentException("Invalid argument '" + value + "'. 'BackRow' must be non-negative.");
-                backRow = value;
+                _backRow = value;
                 if (Vertical) // only update row if vehicle is vertical
-                    FrontRow = backRow + Length - 1;
+                    FrontRow = _backRow + Length - 1;
             }
         }
         
@@ -44,16 +44,16 @@ namespace RushHourModel
         /// </summary>
         public int BackCol
         {
-            get { return backCol; }
+            get { return _backCol; }
             set
             {
-                if (Vertical && objectConstructed)
+                if (Vertical && _objectConstructed)
                     throw new InvalidOperationException("Column cannot change for vertical Vehicle.");
                 if (value < 0)
                     throw new ArgumentException("Invalid argument '" + value + "'. 'BackCol' must be non-negative.");
-                backCol = value;
+                _backCol = value;
                 if (!Vertical) // only update column if vehicle is horizontal
-                    FrontCol = backCol + Length - 1;
+                    FrontCol = _backCol + Length - 1;
             }
         }
 
@@ -72,8 +72,8 @@ namespace RushHourModel
         /// <summary>
         /// Constructs a new Vehicle
         /// </summary>
-        /// <param name="backRow">top-most row coordinate of vehicle</param>
-        /// <param name="backCol">left-most column coordinate of vehicle</param>
+        /// <param name="_backRow">top-most row coordinate of vehicle</param>
+        /// <param name="_backCol">left-most column coordinate of vehicle</param>
         /// <param name="vertical">orientation of vehicle (true if vertical, fasle if horizontal)</param>
         /// <param name="length">cell-length of vehicle</param>
         public Vehicle(int backRow, int backCol, bool vertical, int length)
@@ -91,7 +91,7 @@ namespace RushHourModel
                 FrontCol = backCol;
             else
                 FrontRow = backRow;
-            objectConstructed = true; // row and column can no longer be changed for horizontal and vertical vehicles, respectively
+            _objectConstructed = true; // row and column can no longer be changed for horizontal and vertical vehicles, respectively
         }
     }
 }
