@@ -29,7 +29,7 @@ namespace RushHour
         private VehicleGrid _vehicleGrid;
         private int _initialConfig = 1;
 
-        // fields used for dragging vehicles
+        // fields used for dragging _vehicles
         private Point _anchorMousePoint;  // initial position of mouse on left button click
         private Point _currentMousePoint; // current position of mouse during a left button click (i.e. a drag)
         private Point _lastMousePoint;    // last position of mouse in most recent mouse move event
@@ -43,8 +43,18 @@ namespace RushHour
         public MainWindow()
         {
             InitializeComponent();
-            _vehicleGrid = new VehicleGrid("../../../configurations.txt", _initialConfig);
+
+            try
+            {
+                _vehicleGrid = new VehicleGrid("../../../configurations.txt", _initialConfig);
+            }
+            catch (Exception ex)
+            {
+                // TODO: HOW TO HANDLE BAD CONFIG FILES?
+            }
+
             configEntryBox.Text = _initialConfig.ToString();
+            configEntryBox.Maximum = _vehicleGrid.TotalConfigs;
             SetGameGrid();
             //Panel.SetZIndex(solutionMoveButton, -1); // MAY BE USEFUL FOR VEHEICLES/BORDERS TO SIT ABOVE A GRID IMAGE
         }
@@ -79,7 +89,7 @@ namespace RushHour
             {
                 for (int j = 0; j <= _vehicleGrid.Columns; j++)
                 {
-                    // add the cell to the grid and cell borders array
+                    // add the cell to the _grid and cell borders array
                     Border cellBorder = new Border();
                     gameGrid.Children.Add(cellBorder);
                     Grid.SetRow(cellBorder, i);
@@ -129,6 +139,7 @@ namespace RushHour
                 vehicleBorder.MouseEnter += (s, e) => Mouse.OverrideCursor = Cursors.Hand;  // cursor is hand icon over vehicle
                 vehicleBorder.MouseLeave += (s, e) => Mouse.OverrideCursor = Cursors.Arrow; // cursor is regular not over vehicle
                 vehicleBorder.KeyDown += new KeyEventHandler(border_KeyDown);
+                vehicleBorder.Focusable = true;
 
                 // position the Border on the _vehicleGrid
                 Grid.SetRow(vehicleBorder, vd.row);
@@ -165,6 +176,7 @@ namespace RushHour
             // update _selectedBorder
             _selectedBorder = vehicleBorder;
             _selectedBorder.BorderBrush = Brushes.Blue;
+            vehicleBorder.Focus(); // give focus so arrow key movements will be recognized
 
             // update mouse positions
             _anchorMousePoint = e.GetPosition(gameGrid);
@@ -172,8 +184,8 @@ namespace RushHour
             //anchorPositionActual.Content = string.Format("({0}, {1})", (int)_anchorMousePoint.X, (int)_anchorMousePoint.Y); // delete
 
             string vehicleID = _bordersToVIDs[vehicleBorder];
-            int openCellsBehind = _vehicleGrid.GetOpenCells(vehicleID, false);
-            int openCellsAhead = _vehicleGrid.GetOpenCells(vehicleID, true);
+            int openCellsBehind = _vehicleGrid.GetOpenCellsBehind(vehicleID);
+            int openCellsAhead = _vehicleGrid.GetOpenCellsAhead(vehicleID);
             VehicleStruct v = _vehicleGrid.GetVehicleStuct(vehicleID);
             Border furthestOpenCellBehind;
             Border nearestOccupiedCellAhead;
@@ -370,7 +382,7 @@ namespace RushHour
                     int nearestRow = (int)Math.Round(pointFromTopMostWall.Y / cellSize, 0);
                     int spacesMoved = (nearestRow - vehicleRow);
                     Grid.SetRow(vehicleBorder, nearestRow);
-                    wasVehicleMoved = _vehicleGrid.MoveVehicle(_bordersToVIDs[vehicleBorder], spacesMoved); // move vehicle in underlying grid
+                    wasVehicleMoved = _vehicleGrid.MoveVehicle(_bordersToVIDs[vehicleBorder], spacesMoved); // move vehicle in underlying _grid
                 }
                 else // horizontal vehicle
                 {
@@ -378,7 +390,7 @@ namespace RushHour
                     int nearestColumn = (int)Math.Round(pointFromLeftMostWall.X / cellSize, 0);
                     int spacesMoved = (nearestColumn - vehicleColumn);
                     Grid.SetColumn(vehicleBorder, nearestColumn);
-                    wasVehicleMoved = _vehicleGrid.MoveVehicle(_bordersToVIDs[vehicleBorder], spacesMoved); // move vehicle in underlying grid
+                    wasVehicleMoved = _vehicleGrid.MoveVehicle(_bordersToVIDs[vehicleBorder], spacesMoved); // move vehicle in underlying _grid
                 }
 
                 if (wasVehicleMoved)
@@ -410,7 +422,7 @@ namespace RushHour
                 Grid.SetRow(movedBorder, mv.row);
                 Grid.SetColumn(movedBorder, mv.column);
 
-                // disable button if puzzle is solved
+                // disable button if puzzle is _solved
                 if (_vehicleGrid.Solved)
                     solutionMoveButton.IsEnabled = false;
             }
@@ -425,6 +437,47 @@ namespace RushHour
             _vehicleGrid.SetConfig(config);
             configEntryBox.Text = _vehicleGrid.CurrentConfig.ToString();
             SetGameGrid();
+        }
+
+        private void configEntryBox_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            //private static readonly Regex _regex = new Regex("[^0-9.-]+"); //regex that matches disallowed text
+            //private static bool IsTextAllowed(string text)
+            //{
+            //    return !_regex.IsMatch(text);
+            //}
+
+            //int val;
+            //string deleteme = e.Key.ToString();
+            //if (!int.TryParse(e.Key.ToString(), out val))
+            //{
+            //    e.Handled = true;
+            //}
+            
+        }
+
+        private void configEntryBox_PreviewTextInput(object sender, TextCompositionEventArgs e)
+        {
+            int val;
+            if (!int.TryParse(e.Text, out val))
+            {
+                e.Handled = true;
+            }
+        }
+
+        private void configEntryBox_ValueChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
+        {
+            if (e.NewValue == null )
+            {
+                configEntryBox.Text = e.OldValue.ToString();
+                e.Handled = true;
+            }
+            else if (int.Parse(e.NewValue.ToString()) > _vehicleGrid.TotalConfigs)
+            {
+                configEntryBox.Text = e.OldValue.ToString();
+                e.Handled = true;
+            }
+            
         }
 
         private void configEntryBox_KeyDown(object sender, KeyEventArgs e)
@@ -530,5 +583,15 @@ namespace RushHour
             int y = (int)mousePosition.Y;
             positionActual.Content = string.Format("({0}, {1})", x, y);
         }
+
+
+
+
+
+
+
+
+
+
     }
 }

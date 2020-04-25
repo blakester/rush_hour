@@ -91,7 +91,7 @@ namespace RushHourModel
                 FrontCol = backCol;
             else
                 FrontRow = backRow;
-            _objectConstructed = true; // row and column can no longer be changed for horizontal and vertical vehicles, respectively
+            _objectConstructed = true; // row and column can no longer be changed for horizontal and vertical _vehicles, respectively
         }
     }
 }
