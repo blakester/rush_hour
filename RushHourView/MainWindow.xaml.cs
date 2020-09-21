@@ -484,7 +484,7 @@ namespace RushHour
         {
             if (e.Key == Key.Enter)
             {
-                int config = Int32.Parse(configEntryBox.Text); // THIS NEEDS TO BE VALIDATED, OR NON-NUMBERS SHOULD BE PROHIBITIED AT ENTRY
+                int config = Int32.Parse(configEntryBox.Text);
                 _vehicleGrid.SetConfig(config);
                 SetGameGrid();
             }
@@ -575,23 +575,26 @@ namespace RushHour
             e.Handled = true;
         }
 
-        // DELETE ME WHEN FINISHED
-        private void gameGrid_MouseMove(object sender, MouseEventArgs e)
+
+        private void undoButton_Click(object sender, RoutedEventArgs e)
         {
-            Point mousePosition = e.GetPosition(gameGrid);
-            int x = (int)mousePosition.X;
-            int y = (int)mousePosition.Y;
-            positionActual.Content = string.Format("({0}, {1})", x, y);
+            VehicleStruct? lastMovedVehicle = _vehicleGrid.UndoLastMove();
+
+            if (lastMovedVehicle.HasValue)
+            {
+                Border lastMovedBorder = _vIDsToBorders[lastMovedVehicle.Value.id];
+                Grid.SetRow(lastMovedBorder, lastMovedVehicle.Value.row);
+                Grid.SetColumn(lastMovedBorder, lastMovedVehicle.Value.column);
+            }
         }
 
-
-
-
-
-
-
-
-
-
+        // FOR DRAG-DROP DEBUGGING
+        //private void gameGrid_MouseMove(object sender, MouseEventArgs e)
+        //{
+        //    Point mousePosition = e.GetPosition(gameGrid);
+        //    int x = (int)mousePosition.X;
+        //    int y = (int)mousePosition.Y;
+        //    positionActual.Content = string.Format("({0}, {1})", x, y);
+        //}
     }
 }

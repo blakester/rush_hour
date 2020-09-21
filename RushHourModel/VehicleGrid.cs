@@ -18,6 +18,7 @@ namespace RushHourModel
         private byte[,] _grid;                                                               // underlying _grid
         private string[] _configurations;                                                    // configuration/puzzle encodings
         private Dictionary<string, Vehicle> _vehicles = new Dictionary<string, Vehicle>(32); // Vehicles in _grid
+        private Stack<Tuple<string, int, bool>> _movesMade = new Stack<Tuple<string, int, bool>>();
         private List<string> _solutionMoves = new List<string>(64);                          // moves to solve configuration
         private int _nextSolutionMove;                                                       // index to next solution move
         private bool _solved;                                                                // _grid has been _solved
@@ -516,6 +517,10 @@ namespace RushHourModel
             if (spaces == 0)
                 return false;            
             _userMoveMade = MoveVehiclePrivate(vehicleID, spaces, _grid, _vehicles, true, out _solved);
+
+            if (_userMoveMade)
+                _movesMade.Push(new Tuple<string, int, bool>(vehicleID, spaces, false));
+
             return _userMoveMade;
         }
 
@@ -640,9 +645,30 @@ namespace RushHourModel
             int spaces = Int32.Parse(moveData[1]);
 
             MoveVehiclePrivate(vID, spaces, _grid, _vehicles, false, out _solved);
+            _movesMade.Push(new Tuple<string, int, bool>(vID, spaces, true));
             _solutionMoveMade = true;
             Vehicle movedVehicle = _vehicles[vID];
             return new VehicleStruct(vID, movedVehicle.BackRow, movedVehicle.BackCol, movedVehicle.Vertical, movedVehicle.Length);
+        }
+
+
+        public VehicleStruct? UndoLastMove()
+        {
+            if (_movesMade.Count > 0)
+            {
+                Tuple<string, int, bool> lastMoveInfo = _movesMade.Pop();
+                string vID = lastMoveInfo.Item1;
+                int spaces = lastMoveInfo.Item2;
+                bool wasSolutionMove = lastMoveInfo.Item3;
+
+                if (wasSolutionMove)
+                    _nextSolutionMove--;
+
+                MoveVehiclePrivate(vID, spaces * -1, _grid, _vehicles, false, out _solved); // revert the move
+                Vehicle lastVehicleMoved = _vehicles[vID];
+                return new VehicleStruct(vID, lastVehicleMoved.BackRow, lastVehicleMoved.BackCol, lastVehicleMoved.Vertical, lastVehicleMoved.Length);
+            }
+            return null;
         }
 
 

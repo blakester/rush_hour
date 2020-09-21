@@ -8,45 +8,81 @@
         MinHeight="650" 
         MinWidth="525">
 
-    <Border x:Name="mainBorder" Padding="10">
-        
-        <!--<StackPanel x:Name="mainStackPanel">-->
-        <Grid x:Name="mainGrid" AllowDrop="True">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="8*"/>
-            </Grid.RowDefinitions>
+    <Border x:Name="mainBorder" Padding="10">        
 
-            <Grid x:Name="configsGrid" Grid.Row="0" Margin="0,0,0,10">
+        <Grid x:Name="mainGrid">
+            
+            <Grid.RowDefinitions>
+                <RowDefinition Height="2*"/>
+                <RowDefinition Height="7*"/>
+            </Grid.RowDefinitions>
+           
+            <Grid x:Name="configsGrid" Grid.Row="0">
+                
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="2*"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
+                
+                <Button x:Name="previousConfigButton" Grid.Row="0" Grid.Column="0" Margin="0,0,0,10" FontFamily="Marlett" FontSize="20" Content="3" ToolTip="Previous puzzle" Click="previousConfigButton_Click"/>
 
-                <Button x:Name="previousConfigButton" Grid.Column="0" Margin="0,0,10,0" FontFamily="Marlett" FontSize="20" Content="3" ToolTip="Previous configuration" Click="previousConfigButton_Click"/>
-                <Grid x:Name="setConfigGrid" Grid.Column="1">
+                <Grid x:Name="setConfigGrid" Grid.Row="0" Grid.Column="1" Margin="10,0,10,10">
+                    
                     <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="2*"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
-                    <!--L T R B-->
-                    <Button x:Name="configButton" Grid.Column="0" Margin="0,0,5,0" Content="Set/Reset Config" Padding="3" Click="configButton_Click"/>
-                    <!--<TextBox x:Name="configEntryBox2" Grid.Column="1" TextWrapping="Wrap" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" FontSize="15" ToolTip="Configuration number (zero for random)" KeyDown="configEntryBox_KeyDown"/>-->
-                    <xctk:IntegerUpDown x:Name="configEntryBox" Grid.Column="1" FormatString="N0" VerticalContentAlignment="Center" FontSize="15" ToolTip="Configuration number" Minimum="1" ClipToBounds="True" KeyDown="configEntryBox_KeyDown" HorizontalAlignment="Right" Width="62" PreviewKeyDown="configEntryBox_PreviewKeyDown" PreviewTextInput="configEntryBox_PreviewTextInput" ValueChanged="configEntryBox_ValueChanged"/>
-                    <Button x:Name="randomButton" Grid.Column="2" Margin="5,0,0,0" Content="Random" Padding="3" Click="randomButton_Click"/>
+                    
+                    <Button x:Name="randomButton" Content="Random" Padding="3" ToolTip="Random puzzle" Click="randomButton_Click"/>
+                    <xctk:IntegerUpDown x:Name="configEntryBox" Grid.Column="1" Margin="5,0,5,0" FormatString="N0" VerticalContentAlignment="Center" FontSize="15" ToolTip="Puzzle number" Minimum="1" ClipToBounds="True" KeyDown="configEntryBox_KeyDown" HorizontalAlignment="Stretch" PreviewKeyDown="configEntryBox_PreviewKeyDown" PreviewTextInput="configEntryBox_PreviewTextInput" ValueChanged="configEntryBox_ValueChanged"/>
+                    <Button x:Name="configButton" Grid.Column="2" Content="Set/Reset Puzzle" Padding="3" Click="configButton_Click"/>
                 </Grid>
 
-                <Button x:Name="nextConfigButton" Grid.Column="2" Margin="10,0,0,0" FontFamily="Marlett" FontSize="20" Content="4" ToolTip="Next configuration" Click="nextConfigButton_Click"/>
-            </Grid>
+                <Button x:Name="nextConfigButton" Grid.Row="0" Grid.Column="2" Margin="0,0,0,10" FontFamily="Marlett" FontSize="20" Content="4" ToolTip="Next puzzle" Click="nextConfigButton_Click"/>
 
- 
 
-            <StackPanel Orientation="Horizontal" Grid.Row="1">
-            <Button x:Name="solutionMoveButton" Margin="0,0,0,10" Content="Next Solution Move" Width="50" HorizontalAlignment="Left" Padding="3" Click="solutionMoveButton_Click"/>
-                <StackPanel>
+                <Label x:Name="difficulty" Grid.Row="1" Grid.Column="0" Content="Grand Master" FontSize="15" HorizontalAlignment="Center"/>
+
+
+                <!--<Canvas Grid.Row="1" Grid.Column="0" Margin="0,0,0,10">
+                    <Label Content="Difficulty"/>
+                    <Label x:Name="difficulty" Content="Grand Master" Canvas.Top="8"/>
+                </Canvas>-->
+
+                <!--<StackPanel Grid.Row="1" Grid.Column="1" Margin="0,-10,0,0">
+                    <Label Content="Solution Moves" HorizontalAlignment="Center"/>
+                    <Label x:Name="solutionMoves" Content="10" HorizontalAlignment="Center" Margin="0,-10,0,0"/>
+                </StackPanel>-->
+                <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center">
+                    <Label Content="Solution Moves:" FontSize="15"/>
+                    <Label x:Name="solutionMoves" Grid.Column="1" Content="10" FontSize="15"/>
+                </StackPanel>
+
+                <Button x:Name="solutionMoveButton" Grid.Row="1" Grid.Column="2" Margin="0,0,0,10" Content="Next Solution Move" Padding="3" Click="solutionMoveButton_Click"/>
+
+                <Button x:Name="undoButton" Grid.Row="2" Grid.Column="0" Margin="0,0,0,10" FontFamily="Segoe UI Symbol" FontSize="20" Content="&#x21BA;" ToolTip="Undo move" Click="undoButton_Click"/>
+
+                <!--<StackPanel Grid.Row="2" Grid.Column="1" Margin="0,-10,0,0">
+                    <Label Content="Your Moves" HorizontalAlignment="Center"/>
+                    <Label x:Name="moveCount" Content="0" HorizontalAlignment="Center" Margin="0,-10,0,0"/>
+                </StackPanel>-->
+                <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center">
+                    <Label Content="Your Moves:" FontSize="15"/>
+                    <Label x:Name="moveCount" Content="0" FontSize="15"/>
+                </StackPanel>
+
+                <Button x:Name="redoButton" Grid.Row="2" Grid.Column="2" Margin="0,0,0,10" FontFamily="Segoe UI Symbol" FontSize="20" Content="&#x21BB;" ToolTip="Redo move"/>
+
+                <!--DRAG-DROP DEBUGGING INFO-->
+                <!--<StackPanel Grid.Row="1" Grid.RowSpan="2" Grid.ColumnSpan="3">
                     <StackPanel Orientation="Horizontal">
                         <Label x:Name="positionLabel" Content="Mouse Grid Coordinates:"/>
                         <Label x:Name="positionActual"/>
@@ -73,14 +109,6 @@
                         <Label x:Name="deltaLabel" Content="AnchDist:"/>
                         <Label x:Name="deltaActual"/>
                     </StackPanel>
-                    <!--<StackPanel Orientation="Horizontal">
-                        <Label x:Name="aheadLabel" Content="Space Ahead:"/>
-                        <Label x:Name="aheadActual"/>
-                    </StackPanel>-->
-                    <!--<StackPanel Orientation="Horizontal" Margin="0,-10">
-                        <Label x:Name="behindLabel" Content="Space Behind:"/>
-                        <Label x:Name="behindActual"/>
-                    </StackPanel>-->
                 </StackPanel>
                 <StackPanel>
                     <StackPanel Orientation="Horizontal">
@@ -95,20 +123,17 @@
                         <Label x:Name="relativePos" Content="Relative:"/>
                         <Label x:Name="relativePosActual"/>
                     </StackPanel>
-                </StackPanel>
+                </StackPanel>-->
+                <!--END DRAG-DROP DEBUGGING INFO-->
 
                 <!--<Button x:Name="solutionUndoButton" Content="Undo Solution Move" Width="auto" Padding="3" Click="solutionMoveButton_Click"/>-->
-            </StackPanel>
-            <!--APPARENTLY (PERHAPS) HAVING A GRID WITHIN A STACKPANEL CAUSES IT TO NOT STRETCH VERTICALLY-->
+            </Grid>
 
-            <Viewbox Grid.Row="2" Stretch="Uniform">
-                <Grid x:Name="gameGrid" Height="800" Width="800" MouseMove="gameGrid_MouseMove"/>
+            <Viewbox Grid.Row="1" Stretch="Uniform">
+                <Grid x:Name="gameGrid" Height="800" Width="800"/>
             </Viewbox>
 
-            <!--<Grid x:Name="gameGrid" Grid.Row="2" ShowGridLines="True" Width="{Binding ActualHeight, Mode=OneWay, RelativeSource={RelativeSource Mode=Self}}" Background="Aqua"/>-->
-
         </Grid>
-        <!--</StackPanel>-->
         
     </Border>
 
