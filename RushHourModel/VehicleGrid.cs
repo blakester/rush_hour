@@ -86,7 +86,10 @@ namespace RushHourModel
         private void ValidateConfigurationsFile(string filePath)
         {
             //_configurations = new string[File.ReadLines(filePath).Count()];
-            _configurations = File.ReadLines(filePath).ToArray();
+            _configurations = File.ReadLines(filePath)
+                .Where(x => !string.IsNullOrWhiteSpace(x)) // ignore empty lines
+                .Distinct()                                // ignore duplicate configs
+                .ToArray();
             if (_configurations.Length == 0)
                 throw new FileFormatException("Configurations file cannot be empty. File: '" + filePath + "'");
 
@@ -396,8 +399,10 @@ namespace RushHourModel
             if (config > _configurations.Length)
                 return;
 
+            _movesMade.Clear();
+
             if (config == CurrentConfig)
-                ResetConfig();
+                ResetConfig(); // TODO: REDUNDANCY HERE! IS THIS METHOD NECESSARY? AT VERY LEAST, I THINK A RETURN STATEMENT SHOULD FOLLOW.
             
             // check if random config is desired
             if (config < 1)

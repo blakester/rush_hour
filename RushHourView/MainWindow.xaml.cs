@@ -51,6 +51,7 @@ namespace RushHour
             catch (Exception ex)
             {
                 // TODO: HOW TO HANDLE BAD CONFIG FILES?
+                MessageBox.Show(ex.Message);
             }
 
             configEntryBox.Text = _initialConfig.ToString();
@@ -61,6 +62,7 @@ namespace RushHour
 
         private void SetGameGrid()
         {
+            //_vehicleGrid.ClearPreviousMoves();
             _bordersToVIDs.Clear();
             _vIDsToBorders.Clear();
             gameGrid.Children.Clear();
@@ -583,6 +585,9 @@ namespace RushHour
             if (lastMovedVehicle.HasValue)
             {
                 Border lastMovedBorder = _vIDsToBorders[lastMovedVehicle.Value.id];
+                _selectedBorder.BorderBrush = null;
+                _selectedBorder = lastMovedBorder;
+                _selectedBorder.BorderBrush = Brushes.Blue;
                 Grid.SetRow(lastMovedBorder, lastMovedVehicle.Value.row);
                 Grid.SetColumn(lastMovedBorder, lastMovedVehicle.Value.column);
             }
