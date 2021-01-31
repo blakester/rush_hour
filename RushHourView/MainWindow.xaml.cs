@@ -43,21 +43,20 @@ namespace RushHour
         public MainWindow()
         {
             InitializeComponent();
-
+            
             try
             {
                 _vehicleGrid = new VehicleGrid("../../../configurations.txt", _initialConfig);
+                configEntryBox.Text = _initialConfig.ToString();
+                configEntryBox.Maximum = _vehicleGrid.TotalConfigs;
+                SetGameGrid();
+                //Panel.SetZIndex(solutionMoveButton, -1); // MAY BE USEFUL FOR VEHEICLES/BORDERS TO SIT ABOVE A GRID IMAGE
             }
             catch (Exception ex)
             {
                 // TODO: HOW TO HANDLE BAD CONFIG FILES?
                 MessageBox.Show(ex.Message);
             }
-
-            configEntryBox.Text = _initialConfig.ToString();
-            configEntryBox.Maximum = _vehicleGrid.TotalConfigs;
-            SetGameGrid();
-            //Panel.SetZIndex(solutionMoveButton, -1); // MAY BE USEFUL FOR VEHEICLES/BORDERS TO SIT ABOVE A GRID IMAGE
         }
 
         private void SetGameGrid()
@@ -150,9 +149,11 @@ namespace RushHour
 
                 // add the Border and Vehicle to lookup tables
                 _bordersToVIDs.Add(vehicleBorder, vd.id);
-                _vIDsToBorders.Add(vd.id, vehicleBorder);
-                solutionMoveButton.IsEnabled = true;
+                _vIDsToBorders.Add(vd.id, vehicleBorder);                
             }
+            undoButton.IsEnabled = _vehicleGrid.CanUndoMove;
+            redoButton.IsEnabled = _vehicleGrid.CanRedoMove;
+            solutionMoveButton.IsEnabled = _vehicleGrid.CanMakeSolutionMove;
         }
 
         // ANOTHER APPROACH WHICH MAY BE LESS BUGGY (THOUGH MAYBE NOT AS COOL) WOULD BE TO SIMPLY HIGHTLIGHT CELLS BASED ON THE MOUSE
@@ -396,7 +397,10 @@ namespace RushHour
                 }
 
                 if (wasVehicleMoved)
+                {
+                    undoButton.IsEnabled = _vehicleGrid.CanUndoMove;
                     solutionMoveButton.IsEnabled = false;
+                }
 
                 // reset the transform // TODO: USE THIS OR SIMPLY REINITIALIZE TRANSORM ON MOUSEDOWN
                 _transform.X = 0;
@@ -408,34 +412,9 @@ namespace RushHour
         }
 
 
-        private void solutionMoveButton_Click(object sender, RoutedEventArgs e)
-        {
-            VehicleStruct? movedVehicle = _vehicleGrid.NextSolutionMove();
-            //if (((Button)sender).Equals(solutionMoveButton))
-            //    movedVehicle = _vehicleGrid.NextSolutionMove();
-            //else
-            //    movedVehicle = _vehicleGrid.UndoSolutionMove(); // GET RID OF? CAN'T THINK OF REASONABLE USE-CASE.
-
-            // THIS if SHOULDN'T BE NECESSARY->SOLUTION MOVES WILL ALWAYS WORK SO LONG AS THE BUTTON IS ENABLED
-            if (movedVehicle.HasValue) // HANDLE NULL VehicleStruct (I.E. WHEN THE MOVE CAN'T BE MADE)
-            {
-                VehicleStruct mv = movedVehicle.Value;
-                Border movedBorder = _vIDsToBorders[mv.id];
-                Grid.SetRow(movedBorder, mv.row);
-                Grid.SetColumn(movedBorder, mv.column);
-
-                // disable button if puzzle is _solved
-                if (_vehicleGrid.Solved)
-                    solutionMoveButton.IsEnabled = false;
-            }
-
-            if (_selectedBorder != null)
-                _selectedBorder.Focus();
-        }
-
         private void configButton_Click(object sender, RoutedEventArgs e)
         {
-            int config = Int32.Parse(configEntryBox.Text); // THIS NEEDS TO BE VALIDATED, OR NON-NUMBERS SHOULD BE PROHIBITTED AT ENTRY
+            int config = Int32.Parse(configEntryBox.Text);
             _vehicleGrid.SetConfig(config);
             configEntryBox.Text = _vehicleGrid.CurrentConfig.ToString();
             SetGameGrid();
@@ -478,8 +457,7 @@ namespace RushHour
             {
                 configEntryBox.Text = e.OldValue.ToString();
                 e.Handled = true;
-            }
-            
+            }            
         }
 
         private void configEntryBox_KeyDown(object sender, KeyEventArgs e)
@@ -489,6 +467,7 @@ namespace RushHour
                 int config = Int32.Parse(configEntryBox.Text);
                 _vehicleGrid.SetConfig(config);
                 SetGameGrid();
+                e.Handled = true; // FIXES KeyNotFoundException (SEE TODO-NOTES)
             }
         }
 
@@ -521,6 +500,68 @@ namespace RushHour
             SetGameGrid();
         }
 
+        //private void mainWindow_KeyDown(object sender, KeyEventArgs e)
+        //{
+        //    // ignore keys while vehicle is being dragged
+        //    if (_isInDrag)
+        //    //if (Mouse.LeftButton == MouseButtonState.Pressed) // ALTERNATIVE TO ABOVE
+        //    {
+        //        e.Handled = true;
+        //        return;
+        //    }
+            
+        //    if (_selectedBorder == null)
+        //        return;
+
+        //    //Border border = _selectedBorder;
+        //    bool vertical = Grid.GetRowSpan(_selectedBorder) > 1;
+
+        //    // get ID of _selectedBorder Vehicle
+        //    string vID = _bordersToVIDs[_selectedBorder];
+
+        //    if (e.Key == Key.Left && !vertical)
+        //    {
+        //        if (_vehicleGrid.MoveVehicle(vID, -1))
+        //        {
+        //            int destination = Grid.GetColumn(_selectedBorder) - 1;
+        //            Grid.SetColumn(_selectedBorder, destination);
+        //            undoButton.IsEnabled = _vehicleGrid.CanUndoMove;
+        //            solutionMoveButton.IsEnabled = false;
+        //        }
+        //    }
+        //    else if (e.Key == Key.Right && !vertical)
+        //    {
+        //        if (_vehicleGrid.MoveVehicle(vID, 1))
+        //        {
+        //            int destination = Grid.GetColumn(_selectedBorder) + 1;
+        //            Grid.SetColumn(_selectedBorder, destination);
+        //            undoButton.IsEnabled = _vehicleGrid.CanUndoMove;
+        //            solutionMoveButton.IsEnabled = false;
+        //        }
+        //    }
+        //    else if (e.Key == Key.Up && vertical)
+        //    {
+        //        if (_vehicleGrid.MoveVehicle(vID, -1))
+        //        {
+        //            int destination = Grid.GetRow(_selectedBorder) - 1;
+        //            Grid.SetRow(_selectedBorder, destination);
+        //            undoButton.IsEnabled = _vehicleGrid.CanUndoMove;
+        //            solutionMoveButton.IsEnabled = false;
+        //        }
+        //    }
+        //    else if (e.Key == Key.Down && vertical)
+        //    {
+        //        if (_vehicleGrid.MoveVehicle(vID, 1))
+        //        {
+        //            int destination = Grid.GetRow(_selectedBorder) + 1;
+        //            Grid.SetRow(_selectedBorder, destination);
+        //            undoButton.IsEnabled = _vehicleGrid.CanUndoMove;
+        //            solutionMoveButton.IsEnabled = false;
+        //        }
+        //    }
+        //    e.Handled = true;
+        //}
+
 
         private void border_KeyDown(object sender, KeyEventArgs e)
         {
@@ -544,6 +585,7 @@ namespace RushHour
                 {
                     int destination = Grid.GetColumn(border) - 1;
                     Grid.SetColumn(border, destination);
+                    undoButton.IsEnabled = _vehicleGrid.CanUndoMove;
                     solutionMoveButton.IsEnabled = false;
                 }
             }
@@ -553,6 +595,7 @@ namespace RushHour
                 {
                     int destination = Grid.GetColumn(border) + 1;
                     Grid.SetColumn(border, destination);
+                    undoButton.IsEnabled = _vehicleGrid.CanUndoMove;
                     solutionMoveButton.IsEnabled = false;
                 }
             }
@@ -562,6 +605,7 @@ namespace RushHour
                 {
                     int destination = Grid.GetRow(border) - 1;
                     Grid.SetRow(border, destination);
+                    undoButton.IsEnabled = _vehicleGrid.CanUndoMove;
                     solutionMoveButton.IsEnabled = false;
                 }
             }
@@ -571,6 +615,7 @@ namespace RushHour
                 {
                     int destination = Grid.GetRow(border) + 1;
                     Grid.SetRow(border, destination);
+                    undoButton.IsEnabled = _vehicleGrid.CanUndoMove;
                     solutionMoveButton.IsEnabled = false;
                 }
             }
@@ -578,9 +623,41 @@ namespace RushHour
         }
 
 
+        private void solutionMoveButton_Click(object sender, RoutedEventArgs e)
+        {
+            VehicleStruct? movedVehicle = _vehicleGrid.NextSolutionMove();
+            //if (((Button)sender).Equals(solutionMoveButton))
+            //    movedVehicle = _vehicleGrid.NextSolutionMove();
+            //else
+            //    movedVehicle = _vehicleGrid.UndoSolutionMove(); // GET RID OF? CAN'T THINK OF REASONABLE USE-CASE.
+
+            // THIS if SHOULDN'T BE NECESSARY->SOLUTION MOVES WILL ALWAYS WORK SO LONG AS THE BUTTON IS ENABLED
+            if (movedVehicle.HasValue) // HANDLE NULL VehicleStruct (I.E. WHEN THE MOVE CAN'T BE MADE)
+            {
+                VehicleStruct mv = movedVehicle.Value;
+                Border movedBorder = _vIDsToBorders[mv.id];
+                if (_selectedBorder != null)
+                    _selectedBorder.BorderBrush = null;
+                _selectedBorder = movedBorder;
+                _selectedBorder.BorderBrush = Brushes.Blue;
+                Grid.SetRow(movedBorder, mv.row);
+                Grid.SetColumn(movedBorder, mv.column);
+
+                // disable button if puzzle is _solved
+                //if (_vehicleGrid.Solved)
+                //    solutionMoveButton.IsEnabled = false;
+                undoButton.IsEnabled = true;
+                redoButton.IsEnabled = _vehicleGrid.CanRedoMove;
+                solutionMoveButton.IsEnabled = _vehicleGrid.CanMakeSolutionMove;
+            }
+
+            if (_selectedBorder != null)
+                _selectedBorder.Focus();
+        }
+
         private void undoButton_Click(object sender, RoutedEventArgs e)
         {
-            VehicleStruct? lastMovedVehicle = _vehicleGrid.UndoLastMove();
+            VehicleStruct? lastMovedVehicle = _vehicleGrid.UndoMove();
 
             if (lastMovedVehicle.HasValue)
             {
@@ -588,8 +665,32 @@ namespace RushHour
                 _selectedBorder.BorderBrush = null;
                 _selectedBorder = lastMovedBorder;
                 _selectedBorder.BorderBrush = Brushes.Blue;
+                _selectedBorder.Focus();
                 Grid.SetRow(lastMovedBorder, lastMovedVehicle.Value.row);
                 Grid.SetColumn(lastMovedBorder, lastMovedVehicle.Value.column);
+                undoButton.IsEnabled = _vehicleGrid.CanUndoMove;
+                redoButton.IsEnabled = _vehicleGrid.CanRedoMove;
+                solutionMoveButton.IsEnabled = _vehicleGrid.CanMakeSolutionMove;
+            }
+        }
+
+
+        private void redoButton_Click(object sender, RoutedEventArgs e)
+        {
+            VehicleStruct? lastMovedVehicle = _vehicleGrid.RedoMove();
+
+            if (lastMovedVehicle.HasValue)
+            {
+                Border lastMovedBorder = _vIDsToBorders[lastMovedVehicle.Value.id];
+                _selectedBorder.BorderBrush = null;
+                _selectedBorder = lastMovedBorder;
+                _selectedBorder.BorderBrush = Brushes.Blue;
+                _selectedBorder.Focus();
+                Grid.SetRow(lastMovedBorder, lastMovedVehicle.Value.row);
+                Grid.SetColumn(lastMovedBorder, lastMovedVehicle.Value.column);
+                undoButton.IsEnabled = _vehicleGrid.CanUndoMove;
+                redoButton.IsEnabled = _vehicleGrid.CanRedoMove;
+                solutionMoveButton.IsEnabled = _vehicleGrid.CanMakeSolutionMove;
             }
         }
 

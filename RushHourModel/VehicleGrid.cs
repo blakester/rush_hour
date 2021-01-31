@@ -11,14 +11,15 @@ using System.Collections.Concurrent;
 namespace RushHourModel
 {
     /// <summary>
-    /// Represents a _grid of Vehicles that can be moved around to solve the configuration/puzzle as in the game "Rush Hour"
+    /// Represents a grid of Vehicles that can be moved around to solve the configuration/puzzle as in the game "Rush Hour"
     /// </summary>
     public class VehicleGrid
     {
         private byte[,] _grid;                                                               // underlying _grid
         private string[] _configurations;                                                    // configuration/puzzle encodings
         private Dictionary<string, Vehicle> _vehicles = new Dictionary<string, Vehicle>(32); // Vehicles in _grid
-        private Stack<Tuple<string, int, bool>> _movesMade = new Stack<Tuple<string, int, bool>>();
+        private Stack<MoveInfo> _undoMoves = new Stack<MoveInfo>();
+        private Stack<MoveInfo> _redoMoves = new Stack<MoveInfo>();
         private List<string> _solutionMoves = new List<string>(64);                          // moves to solve configuration
         private int _nextSolutionMove;                                                       // index to next solution move
         private bool _solved;                                                                // _grid has been _solved
@@ -55,8 +56,22 @@ namespace RushHourModel
         public int ConfigDifficulty
         { get; private set; }
 
+        // TODO: USE ME
+        public bool CanMakeSolutionMove
+        { get; private set; }
+
+        public bool CanUndoMove
+        {
+            get { return _undoMoves.Any(); }
+        }
+
+        public bool CanRedoMove
+        {
+            get { return _redoMoves.Any(); }
+        }
+
         /// <summary>
-        /// Indicates whether the current configuration has been _solved.
+        /// Indicates whether the current configuration has been solved.
         /// Resets to false on successful call to SetConfig() or ResetConfig().
         /// </summary>
         public bool Solved
@@ -67,7 +82,7 @@ namespace RushHourModel
 
 
         /// <summary>
-        /// Constructs a _grid using the specified initialConfig from the specified configurationsFile.
+        /// Constructs a grid using the specified initialConfig from the specified configurationsFile.
         /// A random configuration from configurationsFile will be selected if initialConfig is less than 1.
         /// </summary>
         /// <param name="configurationsFilePath">path to text file with _grid _configurations</param>
@@ -201,7 +216,7 @@ namespace RushHourModel
         /// Validates the specified _configurations file using multiple threads and throws an exception reporting any/all _errors.
         /// </summary>
         /// <param name="filePath">path to the _configurations file</param>
-        public void ValidateConfigurationsFile_MltThrd(string filePath)
+        private void ValidateConfigurationsFile_MltThrd(string filePath)
         {
             _configurations = File.ReadLines(filePath).ToArray();
             if (_configurations.Length == 0)
@@ -399,18 +414,21 @@ namespace RushHourModel
             if (config > _configurations.Length)
                 return;
 
-            _movesMade.Clear();
+            _undoMoves.Clear();
+            _redoMoves.Clear();
+            CanMakeSolutionMove = true;
 
             if (config == CurrentConfig)
-                ResetConfig(); // TODO: REDUNDANCY HERE! IS THIS METHOD NECESSARY? AT VERY LEAST, I THINK A RETURN STATEMENT SHOULD FOLLOW.
+                ResetConfig(); // TODO: REDUNDANCY HERE? IS THIS METHOD NECESSARY? AT VERY LEAST, I THINK A RETURN STATEMENT SHOULD FOLLOW.
             
             // check if random config is desired
             if (config < 1)
             {
                 Random rand = new Random();
-                config = rand.Next(_configurations.Length) + 1;
-                while (config == CurrentConfig && _configurations.Length > 1) // ensure random config doesn't equal the current one
+                do
                     config = rand.Next(_configurations.Length) + 1;
+                while (config == CurrentConfig && _configurations.Length > 1); // ensure random config doesn't equal the current one
+                    //config = rand.Next(_configurations.Length) + 1;
             }
             CurrentConfig = config;
 
@@ -460,7 +478,7 @@ namespace RushHourModel
                 _solutionMoves.Add(solutionMove.Trim());
 
             _nextSolutionMove = 0;
-            _userMoveMade = false;
+            _userMoveMade = false;            
             _solutionMoveMade = false;
             Solved = false; // configuration is now set and unsolved
         }
@@ -524,7 +542,10 @@ namespace RushHourModel
             _userMoveMade = MoveVehiclePrivate(vehicleID, spaces, _grid, _vehicles, true, out _solved);
 
             if (_userMoveMade)
-                _movesMade.Push(new Tuple<string, int, bool>(vehicleID, spaces, false));
+            {
+                _undoMoves.Push(new MoveInfo(vehicleID, spaces, false));
+                CanMakeSolutionMove = false;
+            }
 
             return _userMoveMade;
         }
@@ -650,52 +671,80 @@ namespace RushHourModel
             int spaces = Int32.Parse(moveData[1]);
 
             MoveVehiclePrivate(vID, spaces, _grid, _vehicles, false, out _solved);
-            _movesMade.Push(new Tuple<string, int, bool>(vID, spaces, true));
+            _undoMoves.Push(new MoveInfo(vID, spaces, true));
+
+            if (_redoMoves.Any())
+                _redoMoves.Pop();
             _solutionMoveMade = true;
             Vehicle movedVehicle = _vehicles[vID];
             return new VehicleStruct(vID, movedVehicle.BackRow, movedVehicle.BackCol, movedVehicle.Vertical, movedVehicle.Length);
         }
 
 
-        public VehicleStruct? UndoLastMove()
+        public VehicleStruct? UndoMove()
         {
-            if (_movesMade.Count > 0)
+            if (_undoMoves.Any())
             {
-                Tuple<string, int, bool> lastMoveInfo = _movesMade.Pop();
-                string vID = lastMoveInfo.Item1;
-                int spaces = lastMoveInfo.Item2;
-                bool wasSolutionMove = lastMoveInfo.Item3;
+                MoveInfo lastMoveInfo = _undoMoves.Pop();
+                _redoMoves.Push(lastMoveInfo);
 
-                if (wasSolutionMove)
+                if (lastMoveInfo.UserMove)
                     _nextSolutionMove--;
 
-                MoveVehiclePrivate(vID, spaces * -1, _grid, _vehicles, false, out _solved); // revert the move
-                Vehicle lastVehicleMoved = _vehicles[vID];
-                return new VehicleStruct(vID, lastVehicleMoved.BackRow, lastVehicleMoved.BackCol, lastVehicleMoved.Vertical, lastVehicleMoved.Length);
+                if (!_undoMoves.Any())
+                {
+                    _userMoveMade = false;
+                    CanMakeSolutionMove = true;
+                }
+
+                MoveVehiclePrivate(lastMoveInfo.VehicleID, lastMoveInfo.Spaces * -1, _grid, _vehicles, false, out _solved); // revert the move
+                Vehicle lastVehicleMoved = _vehicles[lastMoveInfo.VehicleID];
+
+                return new VehicleStruct(lastMoveInfo.VehicleID, lastVehicleMoved.BackRow, lastVehicleMoved.BackCol, lastVehicleMoved.Vertical, lastVehicleMoved.Length);
             }
             return null;
         }
 
 
+        public VehicleStruct? RedoMove()
+        {
+            if (_redoMoves.Any())
+            {
+                MoveInfo lastMoveInfo = _redoMoves.Pop();
+                _undoMoves.Push(lastMoveInfo);
+
+                if (lastMoveInfo.UserMove)
+                    _nextSolutionMove++;
+                else
+                    CanMakeSolutionMove = false;
+
+                MoveVehiclePrivate(lastMoveInfo.VehicleID, lastMoveInfo.Spaces, _grid, _vehicles, false, out _solved);
+                Vehicle lastVehicleMoved = _vehicles[lastMoveInfo.VehicleID];
+                return new VehicleStruct(lastMoveInfo.VehicleID, lastVehicleMoved.BackRow, lastVehicleMoved.BackCol, lastVehicleMoved.Vertical, lastVehicleMoved.Length);
+            }
+            return null;
+        }
+
+        // TODO: IS THIS FUNCTION NEEDED SINCE UndoMove() HANDLES THIS?
         /// <summary>
         /// Undos the most recent solution move in the _grid. If a user move has been made, the _grid must be
         /// set or reset to undo a solution move.
         /// </summary>
         /// <returns>VehicleStruct of moved vehicle if move was successful, null otherwise</returns>
-        public VehicleStruct? UndoSolutionMove()
-        {
-            if (_userMoveMade || _nextSolutionMove == 0)
-                return null;
+        //public VehicleStruct? UndoSolutionMove()
+        //{
+        //    if (_userMoveMade || _nextSolutionMove == 0)
+        //        return null;
 
-            string[] moveData = _solutionMoves[--_nextSolutionMove].Trim().Split(' ');
-            string vID = moveData[0];
-            int spaces = Int32.Parse(moveData[1]) * -1;
+        //    string[] moveData = _solutionMoves[--_nextSolutionMove].Trim().Split(' ');
+        //    string vID = moveData[0];
+        //    int spaces = Int32.Parse(moveData[1]) * -1;
 
-            MoveVehiclePrivate(vID, spaces, _grid, _vehicles, false, out _solved);
-            _solutionMoveMade = true;
-            Vehicle movedVehicle = _vehicles[vID];
-            return new VehicleStruct(vID, movedVehicle.BackRow, movedVehicle.BackCol, movedVehicle.Vertical, movedVehicle.Length);
-        }
+        //    MoveVehiclePrivate(vID, spaces, _grid, _vehicles, false, out _solved);
+        //    _solutionMoveMade = true;
+        //    Vehicle movedVehicle = _vehicles[vID];
+        //    return new VehicleStruct(vID, movedVehicle.BackRow, movedVehicle.BackCol, movedVehicle.Vertical, movedVehicle.Length);
+        //}
 
 
         /// <summary>
@@ -779,6 +828,40 @@ namespace RushHourModel
                 }
             }
             return openCells;
+        }
+
+        /// <summary>
+        /// Information for a vehicle move
+        /// </summary>
+        private class MoveInfo
+        {
+            /// <summary>
+            /// ID of moved vehicle
+            /// </summary>
+            public string VehicleID { get; private set; }
+
+            /// <summary>
+            /// Number of spaces moved
+            /// </summary>
+            public int Spaces { get; private set; }
+
+            /// <summary>
+            /// True if user made move, false if solution move
+            /// </summary>
+            public bool UserMove { get; private set; }
+
+            /// <summary>
+            /// Constructs vehicle move info
+            /// </summary>
+            /// <param name="vehicleID">ID of moved vehicle</param>
+            /// <param name="spaces">number of spaces moved</param>
+            /// <param name="userMove">true if user made move, false if solution move</param>
+            public MoveInfo(string vehicleID, int spaces, bool userMove)
+            {
+                VehicleID = vehicleID;
+                Spaces = spaces;
+                UserMove = userMove;
+            }
         }
     }
 
