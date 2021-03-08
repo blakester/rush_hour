@@ -2,9 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using System.Threading;
 using System.Collections.Concurrent;
 
@@ -15,15 +12,15 @@ namespace RushHourModel
     /// </summary>
     public class VehicleGrid
     {
-        private byte[,] _grid;                                                               // underlying _grid
+        private byte[,] _grid;                                                               // underlying grid
         private string[] _configurations;                                                    // configuration/puzzle encodings
-        private Dictionary<string, Vehicle> _vehicles = new Dictionary<string, Vehicle>(32); // Vehicles in _grid
+        private Dictionary<string, Vehicle> _vehicles = new Dictionary<string, Vehicle>(32); // Vehicles in grid
         private Stack<MoveInfo> _undoMoves = new Stack<MoveInfo>();
         private Stack<MoveInfo> _redoMoves = new Stack<MoveInfo>();
         private List<string> _solutionMoves = new List<string>(64);                          // moves to solve configuration
         private int _nextSolutionMove;                                                       // index to next solution move
-        private bool _solved;                                                                // _grid has been _solved
-        private ConcurrentBag<string> _errors;                                               // holds all _errors for multi-threaded validation
+        private bool _solved;                                                                // grid has been solved
+        private ConcurrentBag<string> _errors;                                               // holds all errors for multi-threaded validation
         private bool _userMoveMade, _solutionMoveMade;                                        
 
         /// <summary>
@@ -39,7 +36,7 @@ namespace RushHourModel
         { get; private set; }
 
         /// <summary>
-        /// Total number of _configurations
+        /// Total number of configurations
         /// </summary>
         public int TotalConfigs
         { get { return _configurations.Length; } }
@@ -61,9 +58,7 @@ namespace RushHourModel
         { get; private set; }
 
         public bool CanUndoMove
-        {
-            get { return _undoMoves.Any(); }
-        }
+        { get { return _undoMoves.Any(); } }
 
         public bool CanRedoMove
         {

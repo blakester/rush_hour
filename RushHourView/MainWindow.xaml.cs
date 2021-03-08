@@ -15,7 +15,7 @@ using System.Windows.Shapes;
 using RushHourModel;
 using System.Threading;
 
-namespace RushHour
+namespace RushHourView
 {
     /// <summary>
     /// Interaction logic for MainWindow.xaml
@@ -27,7 +27,7 @@ namespace RushHour
         private Dictionary<string, Border> _vIDsToBorders = new Dictionary<string, Border>(32);
         private Border[,] _cellBorders;
         private VehicleGrid _vehicleGrid;
-        private int _initialConfig = 1;
+        //private int _initialConfig = 1;
 
         // fields used for dragging _vehicles
         private Point _anchorMousePoint;  // initial position of mouse on left button click
@@ -46,16 +46,23 @@ namespace RushHour
             
             try
             {
-                _vehicleGrid = new VehicleGrid("../../../configurations.txt", _initialConfig);
-                configEntryBox.Text = _initialConfig.ToString();
-                configEntryBox.Maximum = _vehicleGrid.TotalConfigs;
+                // ORIGINAL, NON-VIEW MODEL CODE
+                //_vehicleGrid = new VehicleGrid("../../../configurations.txt", _initialConfig);
+                //configEntryBox.Text = _initialConfig.ToString();
+                //configEntryBox.Maximum = _vehicleGrid.TotalConfigs;
+                // END ORIGINAL, NON-VIEW MODEL CODE
+
+                // VIEW MODEL VERSION
+                _vehicleGrid = ((RushHourViewModel)DataContext).VehicleGrid;
+                // END VIEW MODEL VERSION
+
                 SetGameGrid();
                 //Panel.SetZIndex(solutionMoveButton, -1); // MAY BE USEFUL FOR VEHEICLES/BORDERS TO SIT ABOVE A GRID IMAGE
             }
             catch (Exception ex)
             {
                 // TODO: HOW TO HANDLE BAD CONFIG FILES?
-                MessageBox.Show(ex.Message);
+                MessageBox.Show("ERROR FROM CODE-BEHIND: " + ex.Message);
             }
         }
 

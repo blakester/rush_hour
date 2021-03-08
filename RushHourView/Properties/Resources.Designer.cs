@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace RushHour.Properties
+namespace RushHourView.Properties
 {
 
 
