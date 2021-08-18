@@ -401,7 +401,7 @@ namespace RushHourModel
 
 
         /// <summary>
-        /// Sets the _grid to the specified configuration. Enter value less than 1 for a random configuration.
+        /// Sets the grid to the specified configuration. Enter value less than 1 for a random configuration.
         /// </summary>
         /// <param name="config">configuration to set _grid to (configs start at 1)</param>
         public void SetConfig(int config)

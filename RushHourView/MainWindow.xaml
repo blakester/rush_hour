@@ -2,13 +2,15 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
+        xmlns:i="clr-namespace:System.Windows.Interactivity;assembly=System.Windows.Interactivity"
         xmlns:local="clr-namespace:RushHourView"
         Title="Rush Hour" 
         Height="650"
         Width="525"
         MinHeight="650" 
         MinWidth="525">
-    
+    <!--xmlns:i="http://schemas.microsoft.com/expression/2010/interactivity"-->
+    <!--xmlns:i="clr-namespace:System.Windows.Interactivity;assembly=System.Windows.Interactivity"-->
     <Window.DataContext>
         <local:RushHourViewModel/>
     </Window.DataContext>
@@ -50,7 +52,26 @@
                     </Grid.ColumnDefinitions>
                     
                     <Button x:Name="randomButton" Content="Random" Padding="3" ToolTip="Random puzzle" Click="randomButton_Click"/>
-                    <xctk:IntegerUpDown x:Name="configEntryBox" Grid.Column="1" Margin="5,0,5,0" Text="{Binding Config, Mode=TwoWay}" FormatString="N0" VerticalContentAlignment="Center" FontSize="15" ToolTip="Puzzle number" Minimum="1" Maximum="{Binding TotalConfigs, Mode=OneTime}" ClipToBounds="True" HorizontalAlignment="Stretch" PreviewTextInput="configEntryBox_PreviewTextInput"/>
+                    <!--TODO: How to update Difficulty when Config changes? "UpdateSourceTrigger=PropertyChanged" wont work because it trys to update every time text changes.-->
+                    <xctk:IntegerUpDown x:Name="configEntryBox" Grid.Column="1" Margin="5,0,5,0" Text="{Binding Config, Mode=TwoWay}" FormatString="N0" VerticalContentAlignment="Center" FontSize="15" ToolTip="Puzzle number" Minimum="1" Maximum="{Binding TotalConfigs, Mode=OneTime}" ClipToBounds="True" HorizontalAlignment="Stretch" PreviewTextInput="configEntryBox_PreviewTextInput" PreviewKeyDown="configEntryBox_PreviewKeyDown">
+                        <!--ATTEMPT 1 - FIRES COMMAND ON EVERY KEY STROKE-->
+                        <!--<i:Interaction.Triggers>
+                            <i:EventTrigger EventName="KeyDown">
+                                --><!--<i:InvokeDataCommand Command="{Binding MyCommand}"/>--><!--
+                                <i:InvokeCommandAction Command="{Binding MyCommand}"/>
+                            </i:EventTrigger>
+                        </i:Interaction.Triggers>-->
+                        
+                        <!--ATTEMPT 2 ONLY FIRE EVENT ON ENTER -->
+                        <xctk:IntegerUpDown.InputBindings>
+                            <KeyBinding Gesture="Enter"
+                                        Command="{Binding MyCommand}"
+                                CommandParameter="{Binding RelativeSource=
+                                   {RelativeSource
+                                    Mode=FindAncestor,
+                                    AncestorType={x:Type xctk:IntegerUpDown}}}"/>
+                        </xctk:IntegerUpDown.InputBindings>
+                    </xctk:IntegerUpDown>
                     <Button x:Name="configButton" Grid.Column="2" Content="Set/Reset Puzzle" Padding="3" Click="configButton_Click"/>
                 </Grid>
 

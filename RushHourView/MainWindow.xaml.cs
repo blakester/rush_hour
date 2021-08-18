@@ -423,7 +423,7 @@ namespace RushHourView
         {
             int config = Int32.Parse(configEntryBox.Text);
             _vehicleGrid.SetConfig(config);
-            configEntryBox.Text = _vehicleGrid.CurrentConfig.ToString();
+            //configEntryBox.Text = _vehicleGrid.CurrentConfig.ToString();
             SetGameGrid();
         }
 
@@ -441,6 +441,11 @@ namespace RushHourView
             //{
             //    e.Handled = true;
             //}
+
+            if (e.Key == Key.Enter)
+            {
+                SetGameGrid();
+            }
             
         }
 

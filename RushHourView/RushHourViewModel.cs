@@ -7,22 +7,28 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Data;
+using System.Windows.Input;
 
 namespace RushHourView
 {
     public class RushHourViewModel : INotifyPropertyChanged
     {
         
-        private int _config = 1;
-        private int _difficulty;
+        //private int _config = 1;
+        //private int _difficulty;
+
+        public ICommand MyCommand { get; private set; }
 
         public RushHourViewModel()
         {
             try
             {
-                VehicleGrid = new VehicleGrid("../../../configurations.txt", _config);
-                TotalConfigs = VehicleGrid.TotalConfigs;
-                _difficulty = VehicleGrid.ConfigDifficulty;
+                //VehicleGrid = new VehicleGrid("../../../configurations.txt", _config);
+                VehicleGrid = new VehicleGrid("../../../configurations.txt", 10);
+                //TotalConfigs = VehicleGrid.TotalConfigs;
+                //_difficulty = VehicleGrid.ConfigDifficulty;
+                MyCommand = new RelayCommand(x => ConfigEntered(x));
             }
             catch (Exception ex)
             {
@@ -31,30 +37,74 @@ namespace RushHourView
             }
         }
 
+        // THIS IS FOR EXPERIMENTATION. THERE'S PROBABLY A BETTER WAY TO HANDLE ENTERING A CONFIG.
+        private void ConfigEntered(object param)
+        {
+            // ATTEMPT 1
+            //if (Keyboard.IsKeyDown(Key.Enter))
+            //{
+            //    OnPropertyChanged("Config");
+            //}
+            // END ATTEMPT 1
+
+            // ATTEMPT 2 - TODO: THIS WORKS, BUT HOW TO SET GAME GRID IN VIEW? SEEMS THAT REALLY HAS TO BE DONE IN THE CODE BEHIND.
+            // MAYBE VIEWMODEL FIRES SOME EVENT THAT THE CONFIG CHANGED AND THE VIEW UPDATES ACCORDINGLY?
+            if (param is Xceed.Wpf.Toolkit.IntegerUpDown)
+            {
+                Xceed.Wpf.Toolkit.IntegerUpDown upDownBox = (Xceed.Wpf.Toolkit.IntegerUpDown)param;
+                Config = Int32.Parse(upDownBox.Text);
+            }
+            // END ATTEMPT 2
+            
+        }
+
         public VehicleGrid VehicleGrid { get; private set; }
+
+        //public int TotalConfigs
+        //{
+        //    get;
+        //    private set;
+        //}
 
         public int TotalConfigs
         {
-            get;
-            private set;
+            get { return VehicleGrid.TotalConfigs; }
         }
+
+        //public int Config
+        //{
+        //    get { return _config; VehicleGrid.}
+        //    set 
+        //    { 
+        //        if (SetProperty(ref _config, value))
+        //        {
+        //            Difficulty = VehicleGrid.ConfigDifficulty;
+        //        }
+        //    }
+        //}
 
         public int Config
         {
-            get { return _config; }
+            get { return VehicleGrid.CurrentConfig; }
             set 
-            { 
-                if (SetProperty(ref _config, value))
+            {
+                if (value != VehicleGrid.CurrentConfig)
                 {
-                    Difficulty = VehicleGrid.ConfigDifficulty;
+                    VehicleGrid.SetConfig(value);
+                    OnPropertyChanged("Difficulty");
                 }
             }
         }
 
+        //public int Difficulty
+        //{
+        //    get { return _difficulty; }
+        //    private set { SetProperty(ref _difficulty, value); }
+        //}
+
         public int Difficulty
         {
-            get { return _difficulty; }
-            private set { SetProperty(ref _difficulty, value); }
+            get { return VehicleGrid.ConfigDifficulty; }
         }
 
         public event PropertyChangedEventHandler PropertyChanged;
