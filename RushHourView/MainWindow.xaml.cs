@@ -437,15 +437,11 @@ namespace RushHourView
 
             //int val;
             //string deleteme = e.Key.ToString();
-            //if (!int.TryParse(e.Key.ToString(), out val))
-            //{
-            //    e.Handled = true;
-            //}
-
-            if (e.Key == Key.Enter)
+            if (!int.TryParse(e.Key.ToString(), out val))
             {
-                SetGameGrid();
+                e.Handled = true;
             }
+            // TEST COMMMENT FOR GIT COMMIT
             
         }
 
