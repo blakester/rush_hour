@@ -427,24 +427,6 @@ namespace RushHourView
             SetGameGrid();
         }
 
-        private void configEntryBox_PreviewKeyDown(object sender, KeyEventArgs e)
-        {
-            //private static readonly Regex _regex = new Regex("[^0-9.-]+"); //regex that matches disallowed text
-            //private static bool IsTextAllowed(string text)
-            //{
-            //    return !_regex.IsMatch(text);
-            //}
-
-            //int val;
-            //string deleteme = e.Key.ToString();
-            //if (!int.TryParse(e.Key.ToString(), out val))
-            //{
-            //    e.Handled = true;
-            //}
-            // TEST COMMMENT AGAIN FOR GIT COMMIT
-            
-        }
-
         private void configEntryBox_PreviewTextInput(object sender, TextCompositionEventArgs e)
         {
             int val;

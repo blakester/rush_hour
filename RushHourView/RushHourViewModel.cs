@@ -14,11 +14,8 @@ namespace RushHourView
 {
     public class RushHourViewModel : INotifyPropertyChanged
     {
-        
-        //private int _config = 1;
-        //private int _difficulty;
-
-        public ICommand MyCommand { get; private set; }
+        public ICommand ConfigEnteredCommand { get; private set; }
+        public ICommand UndoCommand { get; private set; }
 
         public RushHourViewModel()
         {
@@ -28,13 +25,25 @@ namespace RushHourView
                 VehicleGrid = new VehicleGrid("../../../configurations.txt", 10);
                 //TotalConfigs = VehicleGrid.TotalConfigs;
                 //_difficulty = VehicleGrid.ConfigDifficulty;
-                MyCommand = new RelayCommand(x => ConfigEntered(x));
+                ConfigEnteredCommand = new RelayCommand(x => ConfigEntered(x));
+                UndoCommand = new RelayCommand(Undo, UndoCanExecute);
             }
             catch (Exception ex)
             {
                 // TODO: HOW TO HANDLE BAD CONFIG FILES?
                 MessageBox.Show("ERROR FROM ViewModel: " + ex.Message);
             }
+        }
+
+        private void Undo()
+        {
+            VehicleGrid.UndoMove();
+            // RAISE UndoCanExecuteChanged?
+        }
+
+        private bool UndoCanExecute()
+        {
+            return VehicleGrid.CanUndoMove;
         }
 
         // THIS IS FOR EXPERIMENTATION. THERE'S PROBABLY A BETTER WAY TO HANDLE ENTERING A CONFIG.
@@ -54,8 +63,7 @@ namespace RushHourView
                 Xceed.Wpf.Toolkit.IntegerUpDown upDownBox = (Xceed.Wpf.Toolkit.IntegerUpDown)param;
                 Config = Int32.Parse(upDownBox.Text);
             }
-            // END ATTEMPT 2
-            
+            // END ATTEMPT 2           
         }
 
         public VehicleGrid VehicleGrid { get; private set; }
