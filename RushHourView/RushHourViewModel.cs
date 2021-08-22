@@ -14,19 +14,21 @@ namespace RushHourView
 {
     public class RushHourViewModel : INotifyPropertyChanged
     {
-        public ICommand ConfigEnteredCommand { get; private set; }
-        public ICommand UndoCommand { get; private set; }
+        public RelayCommand ConfigEnteredCommand { get; private set; }
+        public RelayCommand UndoCommand { get; private set; }
+        public RelayCommand RedoCommand { get; private set; }
 
         public RushHourViewModel()
         {
             try
             {
                 //VehicleGrid = new VehicleGrid("../../../configurations.txt", _config);
-                VehicleGrid = new VehicleGrid("../../../configurations.txt", 10);
+                VehicleGrid = new VehicleGrid("../../../configurations.txt", 1);
                 //TotalConfigs = VehicleGrid.TotalConfigs;
                 //_difficulty = VehicleGrid.ConfigDifficulty;
-                ConfigEnteredCommand = new RelayCommand(x => ConfigEntered(x));
-                UndoCommand = new RelayCommand(Undo, UndoCanExecute);
+                ConfigEnteredCommand = new RelayCommand(ConfigEntered);
+                //UndoCommand = new RelayCommand(Undo, UndoCanExecute);
+                //RedoCommand = new RelayCommand(Redo, RedoCanExecute);
             }
             catch (Exception ex)
             {
@@ -35,15 +37,30 @@ namespace RushHourView
             }
         }
 
+
+
         private void Undo()
         {
             VehicleGrid.UndoMove();
-            // RAISE UndoCanExecuteChanged?
+            UndoCommand.RaiseCanExecuteChanged();
+            RedoCommand.RaiseCanExecuteChanged();
+        }
+
+        private void Redo()
+        {
+            VehicleGrid.RedoMove();
+            UndoCommand.RaiseCanExecuteChanged();
+            RedoCommand.RaiseCanExecuteChanged();
         }
 
         private bool UndoCanExecute()
         {
-            return VehicleGrid.CanUndoMove;
+            return true;// VehicleGrid.CanUndoMove;
+        }
+
+        private bool RedoCanExecute()
+        {
+            return true;// VehicleGrid.CanRedoMove;
         }
 
         // THIS IS FOR EXPERIMENTATION. THERE'S PROBABLY A BETTER WAY TO HANDLE ENTERING A CONFIG.
@@ -81,7 +98,7 @@ namespace RushHourView
 
         //public int Config
         //{
-        //    get { return _config; VehicleGrid.}
+        //    get { return _config; }
         //    set 
         //    { 
         //        if (SetProperty(ref _config, value))
@@ -94,7 +111,7 @@ namespace RushHourView
         public int Config
         {
             get { return VehicleGrid.CurrentConfig; }
-            set 
+            set
             {
                 if (value != VehicleGrid.CurrentConfig)
                 {
@@ -115,6 +132,8 @@ namespace RushHourView
             get { return VehicleGrid.ConfigDifficulty; }
         }
 
+        #region INotifyPropertyChanged Members
+
         public event PropertyChangedEventHandler PropertyChanged;
 
         private bool SetProperty<T>(ref T property, T newValue, [CallerMemberName]string propertyName = null)
@@ -133,7 +152,9 @@ namespace RushHourView
            if (PropertyChanged != null)
            {
                PropertyChanged.Invoke(this, new PropertyChangedEventArgs(name));
-           }            
+           }
         }
+
+        #endregion
     }
 }

@@ -11,9 +11,9 @@
         MinWidth="525">
     <!--xmlns:i="http://schemas.microsoft.com/expression/2010/interactivity"-->
     <!--xmlns:i="clr-namespace:System.Windows.Interactivity;assembly=System.Windows.Interactivity"-->
-    <Window.DataContext>
+    <!--<Window.DataContext>
         <local:RushHourViewModel/>
-    </Window.DataContext>
+    </Window.DataContext>-->
     <Window.Resources>
         <local:IntToDifficultyStringConverter x:Key="IntToDifficultyStringConverter"/>        
     </Window.Resources>
@@ -97,7 +97,7 @@
 
                 <Button x:Name="solutionMoveButton" Grid.Row="1" Grid.Column="2" Margin="0,0,0,10" Content="Next Solution Move" Padding="3" Click="solutionMoveButton_Click"/>
 
-                <Button x:Name="undoButton" Grid.Row="2" Grid.Column="0" Margin="0,0,0,10" FontFamily="Segoe UI Symbol" FontSize="20" Content="&#x21BA;" ToolTip="Undo move" IsEnabled="False" Command="{Binding UndoCommand}"/>
+                <Button x:Name="undoButton" Grid.Row="2" Grid.Column="0" Margin="0,0,0,10" FontFamily="Segoe UI Symbol" FontSize="20" Content="&#x21BA;" ToolTip="Undo move" Click="undoButton_Click"/>
 
                 <!--<StackPanel Grid.Row="2" Grid.Column="1" Margin="0,-10,0,0">
                     <Label Content="Your Moves" HorizontalAlignment="Center"/>
@@ -108,7 +108,7 @@
                     <Label x:Name="moveCount" Content="0" FontSize="15"/>
                 </StackPanel>
 
-                <Button x:Name="redoButton" Grid.Row="2" Grid.Column="2" Margin="0,0,0,10" FontFamily="Segoe UI Symbol" FontSize="20" Content="&#x21BB;" ToolTip="Redo move" IsEnabled="False" Click="redoButton_Click"/>
+                <Button x:Name="redoButton" Grid.Row="2" Grid.Column="2" Margin="0,0,0,10" FontFamily="Segoe UI Symbol" FontSize="20" Content="&#x21BB;" ToolTip="Redo move" Click="redoButton_Click"/>
 
                 <!--DRAG-DROP DEBUGGING INFO-->
                 <!--<StackPanel Grid.Row="1" Grid.RowSpan="2" Grid.ColumnSpan="3">

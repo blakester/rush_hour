@@ -42,6 +42,7 @@ namespace RushHourView
 
         public MainWindow()
         {
+            this.DataContext = new RushHourViewModel();
             InitializeComponent();
             
             try
@@ -406,6 +407,7 @@ namespace RushHourView
                 if (wasVehicleMoved)
                 {
                     undoButton.IsEnabled = _vehicleGrid.CanUndoMove;
+                    redoButton.IsEnabled = _vehicleGrid.CanRedoMove;
                     solutionMoveButton.IsEnabled = false;
                 }
 
@@ -576,6 +578,7 @@ namespace RushHourView
                     int destination = Grid.GetColumn(border) - 1;
                     Grid.SetColumn(border, destination);
                     undoButton.IsEnabled = _vehicleGrid.CanUndoMove;
+                    redoButton.IsEnabled = _vehicleGrid.CanRedoMove;
                     solutionMoveButton.IsEnabled = false;
                 }
             }
@@ -586,6 +589,7 @@ namespace RushHourView
                     int destination = Grid.GetColumn(border) + 1;
                     Grid.SetColumn(border, destination);
                     undoButton.IsEnabled = _vehicleGrid.CanUndoMove;
+                    redoButton.IsEnabled = _vehicleGrid.CanRedoMove;
                     solutionMoveButton.IsEnabled = false;
                 }
             }
@@ -596,6 +600,7 @@ namespace RushHourView
                     int destination = Grid.GetRow(border) - 1;
                     Grid.SetRow(border, destination);
                     undoButton.IsEnabled = _vehicleGrid.CanUndoMove;
+                    redoButton.IsEnabled = _vehicleGrid.CanRedoMove;
                     solutionMoveButton.IsEnabled = false;
                 }
             }
@@ -606,6 +611,7 @@ namespace RushHourView
                     int destination = Grid.GetRow(border) + 1;
                     Grid.SetRow(border, destination);
                     undoButton.IsEnabled = _vehicleGrid.CanUndoMove;
+                    redoButton.IsEnabled = _vehicleGrid.CanRedoMove;
                     solutionMoveButton.IsEnabled = false;
                 }
             }

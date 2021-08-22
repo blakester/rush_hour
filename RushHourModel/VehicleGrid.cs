@@ -61,7 +61,7 @@ namespace RushHourModel
         { get { return _undoMoves.Any(); } }
 
         public bool CanRedoMove
-        { get { return _redoMoves.Any(); } }
+        { get; private set; }
 
         /// <summary>
         /// Indicates whether the current configuration has been solved.
@@ -405,10 +405,14 @@ namespace RushHourModel
         public void SetConfig(int config)
         {
             if (config > _configurations.Length)
+            {
                 return;
+            }
+                
 
             _undoMoves.Clear();
             _redoMoves.Clear();
+            CanRedoMove = false;
             CanMakeSolutionMove = true;
 
             if (config == CurrentConfig)
@@ -537,6 +541,7 @@ namespace RushHourModel
             if (_userMoveMade)
             {
                 _undoMoves.Push(new MoveInfo(vehicleID, spaces, false));
+                CanRedoMove = false;
                 CanMakeSolutionMove = false;
             }
 
@@ -657,8 +662,10 @@ namespace RushHourModel
         {
             // a solution move can only be executed if the grid has just been set/reset with no user moves made
             if (_userMoveMade || _nextSolutionMove == _solutionMoves.Count)
+            {
                 return null;
-
+            }
+            
             string[] moveData = _solutionMoves[_nextSolutionMove++].Trim().Split(' ');
             string vID = moveData[0];
             int spaces = Int32.Parse(moveData[1]);
@@ -667,7 +674,10 @@ namespace RushHourModel
             _undoMoves.Push(new MoveInfo(vID, spaces, true));
 
             if (_redoMoves.Any())
+            {
                 _redoMoves.Pop();
+                CanRedoMove = _redoMoves.Any();
+            }               
             _solutionMoveMade = true;
             Vehicle movedVehicle = _vehicles[vID];
             return new VehicleStruct(vID, movedVehicle.BackRow, movedVehicle.BackCol, movedVehicle.Vertical, movedVehicle.Length);
@@ -680,9 +690,12 @@ namespace RushHourModel
             {
                 MoveInfo lastMoveInfo = _undoMoves.Pop();
                 _redoMoves.Push(lastMoveInfo);
+                CanRedoMove = true;
 
-                if (lastMoveInfo.UserMove)
+                if (lastMoveInfo.IsSolutionMove)
+                {
                     _nextSolutionMove--;
+                }                    
 
                 if (!_undoMoves.Any())
                 {
@@ -706,15 +719,25 @@ namespace RushHourModel
                 MoveInfo lastMoveInfo = _redoMoves.Pop();
                 _undoMoves.Push(lastMoveInfo);
 
-                if (lastMoveInfo.UserMove)
+                if (lastMoveInfo.IsSolutionMove)
+                {
                     _nextSolutionMove++;
+                }                    
                 else
+                {
                     CanMakeSolutionMove = false;
+                }
+
+                if (!_redoMoves.Any())
+                {
+                    CanRedoMove = false;
+                }
 
                 MoveVehiclePrivate(lastMoveInfo.VehicleID, lastMoveInfo.Spaces, _grid, _vehicles, false, out _solved);
                 Vehicle lastVehicleMoved = _vehicles[lastMoveInfo.VehicleID];
                 return new VehicleStruct(lastMoveInfo.VehicleID, lastVehicleMoved.BackRow, lastVehicleMoved.BackCol, lastVehicleMoved.Vertical, lastVehicleMoved.Length);
             }
+
             return null;
         }
 
@@ -839,9 +862,9 @@ namespace RushHourModel
             public int Spaces { get; private set; }
 
             /// <summary>
-            /// True if user made move, false if solution move
+            /// True if solution move, false if user move
             /// </summary>
-            public bool UserMove { get; private set; }
+            public bool IsSolutionMove { get; private set; }
 
             /// <summary>
             /// Constructs vehicle move info
@@ -853,7 +876,17 @@ namespace RushHourModel
             {
                 VehicleID = vehicleID;
                 Spaces = spaces;
-                UserMove = userMove;
+                IsSolutionMove = userMove;
+            }
+
+            public override bool Equals(object obj)
+            {
+                if (obj is MoveInfo)
+                {
+                    MoveInfo move = (MoveInfo)obj;
+                    return VehicleID == move.VehicleID && Spaces == move.Spaces && IsSolutionMove == move.IsSolutionMove;
+                }
+                return false;
             }
         }
     }
