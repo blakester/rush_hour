@@ -64,6 +64,10 @@ namespace RushHourModel
         public bool CanRedoMove
         { get { return _redoMoves.Any(); } }
 
+        // TODO: USE ME
+        public bool TotalUserMoves
+        { get; private set; }
+
         /// <summary>
         /// Indicates whether the current configuration has been solved.
         /// Resets to false on successful call to SetConfig() or ResetConfig().
@@ -561,24 +565,29 @@ namespace RushHourModel
         public VehicleStruct? NextSolutionMove()
         {
             // a solution move can only be executed if the grid has just been set/reset with no user moves made
-            if (_userMoveMade || _nextSolutionMove == _solutionMoves.Count) // TODO: REPLACE WITH !CanMakeSolutionMove?
+            //if (_userMoveMade || _nextSolutionMove == _solutionMoves.Count) // TODO: REPLACE WITH !CanMakeSolutionMove?
+            //{
+            //    return null;
+            //}
+
+            if (CanMakeSolutionMove)
             {
-                return null;
+                string[] moveData = _solutionMoves[_nextSolutionMove++].Trim().Split(' ');
+                string vID = moveData[0];
+                int spaces = Int32.Parse(moveData[1]);
+                CanMakeSolutionMove = !(_nextSolutionMove == _solutionMoves.Count);
+
+                MoveVehiclePrivate(vID, spaces, _grid, _vehicles, false, out _solved);
+                _undoMoves.Push(new MoveInfo(vID, spaces, true));
+                _redoMoves.Clear();
+
+                _solutionMoveMade = true;
+                Vehicle movedVehicle = _vehicles[vID];
+
+                //File.AppendAllText("move_log.txt", string.Format("\nSolution {0} {1}", vID, spaces)); // DELETE ME ********************************
+                return new VehicleStruct(vID, movedVehicle.BackRow, movedVehicle.BackCol, movedVehicle.Vertical, movedVehicle.Length);
             }
-            
-            string[] moveData = _solutionMoves[_nextSolutionMove++].Trim().Split(' ');
-            string vID = moveData[0];
-            int spaces = Int32.Parse(moveData[1]);
-
-            MoveVehiclePrivate(vID, spaces, _grid, _vehicles, false, out _solved);
-            _undoMoves.Push(new MoveInfo(vID, spaces, true));
-            _redoMoves.Clear();
-              
-            _solutionMoveMade = true;
-            Vehicle movedVehicle = _vehicles[vID];
-
-            //File.AppendAllText("move_log.txt", string.Format("\nSolution {0} {1}", vID, spaces)); // DELETE ME ********************************
-            return new VehicleStruct(vID, movedVehicle.BackRow, movedVehicle.BackCol, movedVehicle.Vertical, movedVehicle.Length);
+            return null;
         }
 
 
@@ -592,12 +601,12 @@ namespace RushHourModel
                 if (lastMoveInfo.IsSolutionMove)
                 {
                     _nextSolutionMove--;
+                    CanMakeSolutionMove = true;
                 }                    
 
                 if (!_undoMoves.Any())
                 {
-                    _userMoveMade = false;
-                    CanMakeSolutionMove = true;
+                    _userMoveMade = false;                    
                 }
 
                 MoveVehiclePrivate(lastMoveInfo.VehicleID, lastMoveInfo.Spaces * -1, _grid, _vehicles, false, out _solved); // revert the move
@@ -620,11 +629,8 @@ namespace RushHourModel
                 if (lastMoveInfo.IsSolutionMove)
                 {
                     _nextSolutionMove++;
+                    CanMakeSolutionMove = !(_nextSolutionMove == _solutionMoves.Count);
                 }                    
-                else
-                {
-                    CanMakeSolutionMove = false;
-                }
 
                 MoveVehiclePrivate(lastMoveInfo.VehicleID, lastMoveInfo.Spaces, _grid, _vehicles, false, out _solved);
                 Vehicle lastVehicleMoved = _vehicles[lastMoveInfo.VehicleID];
