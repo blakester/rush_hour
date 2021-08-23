@@ -54,6 +54,7 @@ namespace RushHourModel
         { get; private set; }
 
         // TODO: USE ME
+        // WOULD THIS BE TIED TO CanUndoMove? SHOULD ONLY BE ABLE TO DO A SOLUTION MOVE IF THE UNDOSTACK IS EMPTY.
         public bool CanMakeSolutionMove
         { get; private set; }
 
@@ -61,7 +62,7 @@ namespace RushHourModel
         { get { return _undoMoves.Any(); } }
 
         public bool CanRedoMove
-        { get; private set; }
+        { get { return _redoMoves.Any(); } }
 
         /// <summary>
         /// Indicates whether the current configuration has been solved.
@@ -407,16 +408,18 @@ namespace RushHourModel
             if (config > _configurations.Length)
             {
                 return;
-            }
-                
+            }                
 
             _undoMoves.Clear();
             _redoMoves.Clear();
-            CanRedoMove = false;
             CanMakeSolutionMove = true;
+            File.Delete("move_log.txt");
 
             if (config == CurrentConfig)
-                ResetConfig(); // TODO: REDUNDANCY HERE? IS THIS METHOD NECESSARY? AT VERY LEAST, I THINK A RETURN STATEMENT SHOULD FOLLOW.
+            {
+                ResetConfig(); // TODO: IS RETURNING HERE CORRECT? THE RETURN STATEMENT WAS NOT HERE ORIGINALLY.
+                return;
+            }
             
             // check if random config is desired
             if (config < 1)
@@ -541,115 +544,12 @@ namespace RushHourModel
             if (_userMoveMade)
             {
                 _undoMoves.Push(new MoveInfo(vehicleID, spaces, false));
-                CanRedoMove = false;
+                _redoMoves.Clear();
                 CanMakeSolutionMove = false;
+                //File.AppendAllText("move_log.txt", string.Format("\nUser {0} {1}", vehicleID, spaces)); // DELETE ME ********************************
             }
 
             return _userMoveMade;
-        }
-
-
-        /// <summary>
-        /// Moves the specified vehicle the specified number of spaces (negative values move vertical
-        /// vehicles up and horizontal vehicles left) in the specified grid using the specified vehicles
-        /// Dictionary. Specify true for 'validate' if move validation is desired. Otherwise the move
-        /// will be attempted without any checks for legality.
-        /// </summary>
-        /// <param name="vehicleID">ID of Vehicle to move</param>
-        /// <param name="spaces">number of spaces to move (negative values move up/left)</param>
-        /// <param name="grid">underlying vehicles grid</param>
-        /// <param name="vehicles">Vehicle Dictionary</param>
-        /// <param name="validate">true if move validation is desired</param>
-        /// <param name="solved">true if move solved the configuration/grid</param>
-        /// <returns>true if move was successful/legal</returns>
-        private bool MoveVehiclePrivate(string vehicleID, int spaces, byte[,] grid, Dictionary<string, Vehicle> vehicles, bool validate, out bool solved)
-        {
-            Vehicle v = vehicles[vehicleID]; // get Vehicle being moved
-            int rows = grid.GetLength(0);
-            int columns = grid.GetLength(1);
-            solved = false;
-
-            // Note: the technique used here is to delete/unmark one end of the Vehicle and add/mark
-            // one cell ahead of the other end of the Vehicle, one space at a time. In other words,
-            // chop off one cell of the Vehicle and add it to the other end for each movement.
-
-            if (v.Vertical)
-            {
-                // move down
-                if (spaces > 0)
-                {
-                    if (validate)
-                    {
-                        if (v.FrontRow + spaces >= rows) // check inbounds
-                            return false;
-                        for (int i = v.FrontRow + 1; i <= v.FrontRow + spaces; i++) // check spaces below are empty
-                            if (grid[i, v.FrontCol] == 1)
-                                return false;
-                    }
-                    for (int i = 0; i < spaces; i++)
-                    {
-                        grid[v.BackRow++, v.BackCol] = 0; // unmark top-most cell of Vehicle and scoot Vehicle one space down
-                        grid[v.FrontRow, v.FrontCol] = 1; // mark the new bottom-most cell of the Vehicle
-                    }
-                }
-                // move up
-                else
-                {
-                    if (validate)
-                    {
-                        if (v.BackRow + spaces < 0) // check inbounds
-                            return false;
-                        for (int i = v.BackRow - 1; i >= v.BackRow + spaces; i--) // check spaces above are empty
-                            if (grid[i, v.BackCol] == 1)
-                                return false;
-                    }
-                    for (int i = spaces; i < 0; i++)
-                    {
-                        grid[v.FrontRow, v.FrontCol] = 0; // unmark bottom-most cell of Vehicle
-                        grid[--v.BackRow, v.BackCol] = 1; // scoot Vehicle one space up and mark the space                
-                    }
-                }
-            }
-            else
-            {
-                // move right
-                if (spaces > 0)
-                {
-                    if (validate)
-                    {
-                        if (v.FrontCol + spaces >= columns)
-                            return false;
-                        for (int i = v.FrontCol + 1; i <= v.FrontCol + spaces; i++) // check spaces ahead are empty
-                            if (grid[v.FrontRow, i] == 1)
-                                return false;
-                    }
-                    for (int i = 0; i < spaces; i++)
-                    {
-                        grid[v.BackRow, v.BackCol++] = 0; // unmark left-most cell of Vehicle and scoot Vehicle one space right
-                        grid[v.FrontRow, v.FrontCol] = 1; // mark the new right-most cell of the Vehicle
-                    }
-                    if (vehicleID.Equals("X") && v.FrontCol == (columns - 1)) // check for victory
-                        solved = true;
-                }
-                // move left
-                else
-                {
-                    if (validate)
-                    {
-                        if (v.BackCol + spaces < 0)
-                            return false;
-                        for (int i = v.BackCol - 1; i >= v.BackCol + spaces; i--) // check spaces behind are empty
-                            if (grid[v.BackRow, i] == 1)
-                                return false;
-                    }
-                    for (int i = spaces; i < 0; i++)
-                    {
-                        grid[v.FrontRow, v.FrontCol] = 0; // unmark right-most cell of Vehicle
-                        grid[v.BackRow, --v.BackCol] = 1; // scoot Vehicle one space left and mark the space                       
-                    }
-                }
-            }
-            return true;
         }
 
 
@@ -661,7 +561,7 @@ namespace RushHourModel
         public VehicleStruct? NextSolutionMove()
         {
             // a solution move can only be executed if the grid has just been set/reset with no user moves made
-            if (_userMoveMade || _nextSolutionMove == _solutionMoves.Count)
+            if (_userMoveMade || _nextSolutionMove == _solutionMoves.Count) // TODO: REPLACE WITH !CanMakeSolutionMove?
             {
                 return null;
             }
@@ -672,25 +572,22 @@ namespace RushHourModel
 
             MoveVehiclePrivate(vID, spaces, _grid, _vehicles, false, out _solved);
             _undoMoves.Push(new MoveInfo(vID, spaces, true));
-
-            if (_redoMoves.Any())
-            {
-                _redoMoves.Pop();
-                CanRedoMove = _redoMoves.Any();
-            }               
+            _redoMoves.Clear();
+              
             _solutionMoveMade = true;
             Vehicle movedVehicle = _vehicles[vID];
+
+            //File.AppendAllText("move_log.txt", string.Format("\nSolution {0} {1}", vID, spaces)); // DELETE ME ********************************
             return new VehicleStruct(vID, movedVehicle.BackRow, movedVehicle.BackCol, movedVehicle.Vertical, movedVehicle.Length);
         }
 
 
         public VehicleStruct? UndoMove()
         {
-            if (_undoMoves.Any())
+            if (CanUndoMove)
             {
                 MoveInfo lastMoveInfo = _undoMoves.Pop();
                 _redoMoves.Push(lastMoveInfo);
-                CanRedoMove = true;
 
                 if (lastMoveInfo.IsSolutionMove)
                 {
@@ -706,6 +603,7 @@ namespace RushHourModel
                 MoveVehiclePrivate(lastMoveInfo.VehicleID, lastMoveInfo.Spaces * -1, _grid, _vehicles, false, out _solved); // revert the move
                 Vehicle lastVehicleMoved = _vehicles[lastMoveInfo.VehicleID];
 
+                //File.AppendAllText("move_log.txt", string.Format("\n{0} {1} {2}", lastMoveInfo.IsSolutionMove ? "UndoSolution" : "UndoUser", lastMoveInfo.VehicleID, // DELETE ME ********************************lastMoveInfo.Spaces));
                 return new VehicleStruct(lastMoveInfo.VehicleID, lastVehicleMoved.BackRow, lastVehicleMoved.BackCol, lastVehicleMoved.Vertical, lastVehicleMoved.Length);
             }
             return null;
@@ -714,7 +612,7 @@ namespace RushHourModel
 
         public VehicleStruct? RedoMove()
         {
-            if (_redoMoves.Any())
+            if (CanRedoMove)
             {
                 MoveInfo lastMoveInfo = _redoMoves.Pop();
                 _undoMoves.Push(lastMoveInfo);
@@ -728,13 +626,10 @@ namespace RushHourModel
                     CanMakeSolutionMove = false;
                 }
 
-                if (!_redoMoves.Any())
-                {
-                    CanRedoMove = false;
-                }
-
                 MoveVehiclePrivate(lastMoveInfo.VehicleID, lastMoveInfo.Spaces, _grid, _vehicles, false, out _solved);
                 Vehicle lastVehicleMoved = _vehicles[lastMoveInfo.VehicleID];
+
+                //File.AppendAllText("move_log.txt", string.Format("\n{0} {1} {2}", lastMoveInfo.IsSolutionMove ? "RedoSolution" : "RedoUser", lastMoveInfo.VehicleID, lastMoveInfo.Spaces)); // DELETE ME ********************************
                 return new VehicleStruct(lastMoveInfo.VehicleID, lastVehicleMoved.BackRow, lastVehicleMoved.BackCol, lastVehicleMoved.Vertical, lastVehicleMoved.Length);
             }
 
@@ -845,6 +740,111 @@ namespace RushHourModel
             }
             return openCells;
         }
+
+
+        /// <summary>
+        /// Moves the specified vehicle the specified number of spaces (negative values move vertical
+        /// vehicles up and horizontal vehicles left) in the specified grid using the specified vehicles
+        /// Dictionary. Specify true for 'validate' if move validation is desired. Otherwise the move
+        /// will be attempted without any checks for legality.
+        /// </summary>
+        /// <param name="vehicleID">ID of Vehicle to move</param>
+        /// <param name="spaces">number of spaces to move (negative values move up/left)</param>
+        /// <param name="grid">underlying vehicles grid</param>
+        /// <param name="vehicles">Vehicle Dictionary</param>
+        /// <param name="validate">true if move validation is desired</param>
+        /// <param name="solved">true if move solved the configuration/grid</param>
+        /// <returns>true if move was successful/legal</returns>
+        private bool MoveVehiclePrivate(string vehicleID, int spaces, byte[,] grid, Dictionary<string, Vehicle> vehicles, bool validate, out bool solved)
+        {
+            Vehicle v = vehicles[vehicleID]; // get Vehicle being moved
+            int rows = grid.GetLength(0);
+            int columns = grid.GetLength(1);
+            solved = false;
+
+            // Note: the technique used here is to delete/unmark one end of the Vehicle and add/mark
+            // one cell ahead of the other end of the Vehicle, one space at a time. In other words,
+            // chop off one cell of the Vehicle and add it to the other end for each movement.
+
+            if (v.Vertical)
+            {
+                // move down
+                if (spaces > 0)
+                {
+                    if (validate)
+                    {
+                        if (v.FrontRow + spaces >= rows) // check inbounds
+                            return false;
+                        for (int i = v.FrontRow + 1; i <= v.FrontRow + spaces; i++) // check spaces below are empty
+                            if (grid[i, v.FrontCol] == 1)
+                                return false;
+                    }
+                    for (int i = 0; i < spaces; i++)
+                    {
+                        grid[v.BackRow++, v.BackCol] = 0; // unmark top-most cell of Vehicle and scoot Vehicle one space down
+                        grid[v.FrontRow, v.FrontCol] = 1; // mark the new bottom-most cell of the Vehicle
+                    }
+                }
+                // move up
+                else
+                {
+                    if (validate)
+                    {
+                        if (v.BackRow + spaces < 0) // check inbounds
+                            return false;
+                        for (int i = v.BackRow - 1; i >= v.BackRow + spaces; i--) // check spaces above are empty
+                            if (grid[i, v.BackCol] == 1)
+                                return false;
+                    }
+                    for (int i = spaces; i < 0; i++)
+                    {
+                        grid[v.FrontRow, v.FrontCol] = 0; // unmark bottom-most cell of Vehicle
+                        grid[--v.BackRow, v.BackCol] = 1; // scoot Vehicle one space up and mark the space                
+                    }
+                }
+            }
+            else
+            {
+                // move right
+                if (spaces > 0)
+                {
+                    if (validate)
+                    {
+                        if (v.FrontCol + spaces >= columns)
+                            return false;
+                        for (int i = v.FrontCol + 1; i <= v.FrontCol + spaces; i++) // check spaces ahead are empty
+                            if (grid[v.FrontRow, i] == 1)
+                                return false;
+                    }
+                    for (int i = 0; i < spaces; i++)
+                    {
+                        grid[v.BackRow, v.BackCol++] = 0; // unmark left-most cell of Vehicle and scoot Vehicle one space right
+                        grid[v.FrontRow, v.FrontCol] = 1; // mark the new right-most cell of the Vehicle
+                    }
+                    if (vehicleID.Equals("X") && v.FrontCol == (columns - 1)) // check for victory
+                        solved = true;
+                }
+                // move left
+                else
+                {
+                    if (validate)
+                    {
+                        if (v.BackCol + spaces < 0)
+                            return false;
+                        for (int i = v.BackCol - 1; i >= v.BackCol + spaces; i--) // check spaces behind are empty
+                            if (grid[v.BackRow, i] == 1)
+                                return false;
+                    }
+                    for (int i = spaces; i < 0; i++)
+                    {
+                        grid[v.FrontRow, v.FrontCol] = 0; // unmark right-most cell of Vehicle
+                        grid[v.BackRow, --v.BackCol] = 1; // scoot Vehicle one space left and mark the space                       
+                    }
+                }
+            }
+            return true;
+        }
+
 
         /// <summary>
         /// Information for a vehicle move
