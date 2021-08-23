@@ -20,8 +20,7 @@ namespace RushHourModel
         private List<string> _solutionMoves = new List<string>(64);                          // moves to solve configuration
         private int _nextSolutionMove;                                                       // index to next solution move
         private bool _solved;                                                                // grid has been solved
-        private ConcurrentBag<string> _errors;                                               // holds all errors for multi-threaded validation
-        private bool _userMoveMade, _solutionMoveMade;                                        
+        private ConcurrentBag<string> _errors;                                               // holds all errors for multi-threaded validation                                    
 
         /// <summary>
         /// Number of rows in the current configuration
@@ -482,8 +481,6 @@ namespace RushHourModel
                 _solutionMoves.Add(solutionMove.Trim());
 
             _nextSolutionMove = 0;
-            _userMoveMade = false;            
-            _solutionMoveMade = false;
             Solved = false; // configuration is now set and unsolved
         }
 
@@ -494,7 +491,7 @@ namespace RushHourModel
         public void ResetConfig()
         {            
             // only reset if a move has been made
-            if (_userMoveMade || _solutionMoveMade)
+            if (CanUndoMove)
             {
                 // reset the Vehicle positions and the underlying grid
                 Array.Clear(_grid, 0, _grid.Length);
@@ -524,8 +521,6 @@ namespace RushHourModel
                     }
                 }                
                 _nextSolutionMove = 0;
-                _userMoveMade = false;
-                _solutionMoveMade = false;
                 Solved = false;
             }
         }
@@ -541,19 +536,21 @@ namespace RushHourModel
         /// <returns>true if the vehicle was moved</returns>
         public bool MoveVehicle(string vehicleID, int spaces)
         {
-            if (spaces == 0)
-                return false;            
-            _userMoveMade = MoveVehiclePrivate(vehicleID, spaces, _grid, _vehicles, true, out _solved);
+            bool moveSuccessful = false;
 
-            if (_userMoveMade)
+            if (spaces != 0)
             {
-                _undoMoves.Push(new MoveInfo(vehicleID, spaces, false));
-                _redoMoves.Clear();
-                CanMakeSolutionMove = false;
-                //File.AppendAllText("move_log.txt", string.Format("\nUser {0} {1}", vehicleID, spaces)); // DELETE ME ********************************
-            }
+                moveSuccessful = MoveVehiclePrivate(vehicleID, spaces, _grid, _vehicles, true, out _solved);
 
-            return _userMoveMade;
+                if (moveSuccessful)
+                {
+                    _undoMoves.Push(new MoveInfo(vehicleID, spaces, false));
+                    _redoMoves.Clear();
+                    CanMakeSolutionMove = false;
+                    //File.AppendAllText("move_log.txt", string.Format("\nUser {0} {1}", vehicleID, spaces)); // DELETE ME ********************************
+                }
+            }
+            return moveSuccessful;
         }
 
 
@@ -581,7 +578,6 @@ namespace RushHourModel
                 _undoMoves.Push(new MoveInfo(vID, spaces, true));
                 _redoMoves.Clear();
 
-                _solutionMoveMade = true;
                 Vehicle movedVehicle = _vehicles[vID];
 
                 //File.AppendAllText("move_log.txt", string.Format("\nSolution {0} {1}", vID, spaces)); // DELETE ME ********************************
@@ -606,7 +602,7 @@ namespace RushHourModel
 
                 if (!_undoMoves.Any())
                 {
-                    _userMoveMade = false;                    
+                    CanMakeSolutionMove = true;                    
                 }
 
                 MoveVehiclePrivate(lastMoveInfo.VehicleID, lastMoveInfo.Spaces * -1, _grid, _vehicles, false, out _solved); // revert the move
@@ -630,7 +626,11 @@ namespace RushHourModel
                 {
                     _nextSolutionMove++;
                     CanMakeSolutionMove = !(_nextSolutionMove == _solutionMoves.Count);
-                }                    
+                }
+                else
+                {
+                    CanMakeSolutionMove = false;
+                }  
 
                 MoveVehiclePrivate(lastMoveInfo.VehicleID, lastMoveInfo.Spaces, _grid, _vehicles, false, out _solved);
                 Vehicle lastVehicleMoved = _vehicles[lastMoveInfo.VehicleID];
