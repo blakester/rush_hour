@@ -53,7 +53,7 @@
                     
                     <Button x:Name="randomButton" Content="Random" Padding="3" ToolTip="Random puzzle" Click="randomButton_Click"/>
                     <!--TODO: How to update Difficulty when Config changes? "UpdateSourceTrigger=PropertyChanged" wont work because it trys to update every time text changes.-->
-                    <xctk:IntegerUpDown x:Name="configEntryBox" Grid.Column="1" Margin="5,0,5,0" Text="{Binding Config, Mode=TwoWay}" FormatString="N0" VerticalContentAlignment="Center" FontSize="15" ToolTip="Puzzle number" Minimum="1" Maximum="{Binding TotalConfigs, Mode=OneTime}" ClipToBounds="True" HorizontalAlignment="Stretch" PreviewTextInput="configEntryBox_PreviewTextInput">
+                    <xctk:IntegerUpDown x:Name="configEntryBox" Grid.Column="1" Margin="5,0,5,0" Text="{Binding Config, Mode=TwoWay}" FormatString="N0" VerticalContentAlignment="Center" FontSize="15" ToolTip="Puzzle number" Minimum="1" Maximum="{Binding TotalConfigs, Mode=OneTime}" ClipToBounds="True" HorizontalAlignment="Stretch" KeyDown="configEntryBox_KeyDown">
                         <!--ATTEMPT 1 - FIRES COMMAND ON EVERY KEY STROKE-->
                         <!--<i:Interaction.Triggers>
                             <i:EventTrigger EventName="KeyDown">
@@ -65,11 +65,8 @@
                         <!--ATTEMPT 2 ONLY FIRE EVENT ON ENTER -->
                         <xctk:IntegerUpDown.InputBindings>
                             <KeyBinding Gesture="Enter"
-                                        Command="{Binding MyCommand}"
-                                CommandParameter="{Binding RelativeSource=
-                                   {RelativeSource
-                                    Mode=FindAncestor,
-                                    AncestorType={x:Type xctk:IntegerUpDown}}}"/>
+                                        Command="{Binding ConfigEnteredCommand}"
+                                        CommandParameter="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type xctk:IntegerUpDown}}}"/>
                         </xctk:IntegerUpDown.InputBindings>
                     </xctk:IntegerUpDown>
                     <Button x:Name="configButton" Grid.Column="2" Content="Set/Reset Puzzle" Padding="3" Click="configButton_Click"/>
@@ -90,9 +87,9 @@
                     <Label Content="Solution Moves" HorizontalAlignment="Center"/>
                     <Label x:Name="solutionMoves" Content="10" HorizontalAlignment="Center" Margin="0,-10,0,0"/>
                 </StackPanel>-->
-                <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center">
+                <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Left" Margin="10,0,0,0">
                     <Label Content="Solution Required Moves:" ToolTip="Number of moves required by solution to solve" FontSize="15"/>
-                    <Label x:Name="solutionMoves" Grid.Column="1" Content="10" FontSize="15"/>
+                    <Label x:Name="solutionMoves" Grid.Column="1" Content="{Binding RequiredSolutionMoves}" FontSize="15"/>
                 </StackPanel>
 
                 <Button x:Name="solutionMoveButton" Grid.Row="1" Grid.Column="2" Margin="0,0,0,10" Content="Next Solution Move" Padding="3" Click="solutionMoveButton_Click"/>
@@ -105,7 +102,7 @@
                 </StackPanel>-->
                 <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center">
                     <Label Content="Your Moves:" FontSize="15"/>
-                    <Label x:Name="moveCount" Content="0" FontSize="15"/>
+                    <Label x:Name="moveCount" Content="{Binding TotalMoves}" FontSize="15"/>
                 </StackPanel>
 
                 <Button x:Name="redoButton" Grid.Row="2" Grid.Column="2" Margin="0,0,0,10" FontFamily="Segoe UI Symbol" FontSize="20" Content="&#x21BB;" ToolTip="Redo move" Click="redoButton_Click"/>

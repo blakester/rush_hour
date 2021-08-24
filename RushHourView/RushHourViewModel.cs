@@ -55,12 +55,12 @@ namespace RushHourView
 
         private bool UndoCanExecute()
         {
-            return true;// VehicleGrid.CanUndoMove;
+            return VehicleGrid.CanUndoMove;
         }
 
         private bool RedoCanExecute()
         {
-            return true;// VehicleGrid.CanRedoMove;
+            return VehicleGrid.CanRedoMove;
         }
 
         // THIS IS FOR EXPERIMENTATION. THERE'S PROBABLY A BETTER WAY TO HANDLE ENTERING A CONFIG.
@@ -117,6 +117,8 @@ namespace RushHourView
                 {
                     VehicleGrid.SetConfig(value);
                     OnPropertyChanged("Difficulty");
+                    OnPropertyChanged("TotalMoves");
+                    OnPropertyChanged("RequiredSolutionMoves");
                 }
             }
         }
@@ -130,6 +132,16 @@ namespace RushHourView
         public int Difficulty
         {
             get { return VehicleGrid.ConfigDifficulty; }
+        }
+
+        public int TotalMoves
+        {
+            get { return VehicleGrid.TotalMoves; }
+        }
+
+        public int RequiredSolutionMoves
+        {
+            get { return VehicleGrid.RequiredSolutionMoves; }
         }
 
         #region INotifyPropertyChanged Members

@@ -15,12 +15,24 @@ namespace RushHourModel
         private byte[,] _grid;                                                               // underlying grid
         private string[] _configurations;                                                    // configuration/puzzle encodings
         private Dictionary<string, Vehicle> _vehicles = new Dictionary<string, Vehicle>(32); // Vehicles in grid
-        private Stack<MoveInfo> _undoMoves = new Stack<MoveInfo>();
-        private Stack<MoveInfo> _redoMoves = new Stack<MoveInfo>();
-        private List<string> _solutionMoves = new List<string>(64);                          // moves to solve configuration
+        private Stack<MoveInfo> _undoMoves = new Stack<MoveInfo>();                          // stores move to undo
+        private Stack<MoveInfo> _redoMoves = new Stack<MoveInfo>();                          // store moves to redo
+        private List<MoveInfo> _solutionMoves = new List<MoveInfo>(64);                      // stores solution moves that solve the configuration
         private int _nextSolutionMove;                                                       // index to next solution move
         private bool _solved;                                                                // grid has been solved
-        private ConcurrentBag<string> _errors;                                               // holds all errors for multi-threaded validation                                    
+        private ConcurrentBag<string> _errors;                                               // holds all errors for multi-threaded validation 
+
+        /// <summary>
+        /// Constructs a grid using the specified initialConfig from the specified configurationsFile.
+        /// A random configuration from configurationsFile will be selected if initialConfig is less than 1.
+        /// </summary>
+        /// <param name="configurationsFilePath">path to text file with grid configurations</param>
+        /// <param name="initialConfig">configuration to set grid to (configs start at 1)</param>
+        public VehicleGrid(string configurationsFilePath, int initialConfig)
+        {
+            ValidateConfigurationsFile(configurationsFilePath);
+            SetConfig(initialConfig);
+        }                   
 
         /// <summary>
         /// Number of rows in the current configuration
@@ -52,23 +64,39 @@ namespace RushHourModel
         public int ConfigDifficulty
         { get; private set; }
 
-        // TODO: USE ME
-        // WOULD THIS BE TIED TO CanUndoMove? SHOULD ONLY BE ABLE TO DO A SOLUTION MOVE IF THE UNDOSTACK IS EMPTY.
+        /// <summary>
+        /// True if an automatic solution move can be executed
+        /// </summary>
         public bool CanMakeSolutionMove
         { get; private set; }
 
+        /// <summary>
+        /// True if there is a move to be undone
+        /// </summary>
         public bool CanUndoMove
         { get { return _undoMoves.Any(); } }
 
+        /// <summary>
+        /// True if there is a move to be redone
+        /// </summary>
         public bool CanRedoMove
         { get { return _redoMoves.Any(); } }
 
-        // TODO: USE ME
-        public bool TotalUserMoves
-        { get; private set; }
+        /// <summary>
+        /// Number of moves required to solve the current configuration (according to it's solution)
+        /// </summary>
+        public int RequiredSolutionMoves
+        { get { return _solutionMoves.Count; } }
 
         /// <summary>
-        /// Indicates whether the current configuration has been solved.
+        /// Total number of move made, solution moves included. Decremented/incremented by undo/redo respectively.
+        /// </summary>
+        public int TotalMoves
+        { get; private set; }
+
+        // TODO: IF CONFIG IS EVER COMPLETED USING SOLUTION MOVES (I.E. IF _nextSolutionMove > 0 AT THE TIME OF COMPLETION) DON'T COUNT AS SOLVED?
+        /// <summary>
+        /// True if the current configuration has been solved.
         /// Resets to false on successful call to SetConfig() or ResetConfig().
         /// </summary>
         public bool Solved
@@ -79,62 +107,58 @@ namespace RushHourModel
 
 
         /// <summary>
-        /// Constructs a grid using the specified initialConfig from the specified configurationsFile.
-        /// A random configuration from configurationsFile will be selected if initialConfig is less than 1.
-        /// </summary>
-        /// <param name="configurationsFilePath">path to text file with grid configurations</param>
-        /// <param name="initialConfig">configuration to set grid to (configs start at 1)</param>
-        public VehicleGrid(string configurationsFilePath, int initialConfig)
-        {
-            ValidateConfigurationsFile(configurationsFilePath);            
-            SetConfig(initialConfig);            
-        }
-
-
-        /// <summary>
         /// Validates the specified configurations file and throws an exception if an error is encountered.
         /// </summary>
         /// <param name="filePath">path to the configurations file</param>
         private void ValidateConfigurationsFile(string filePath)
         {
-            //_configurations = new string[File.ReadLines(filePath).Count()];
             _configurations = File.ReadLines(filePath)
                 .Where(x => !string.IsNullOrWhiteSpace(x)) // ignore empty lines
                 .Distinct()                                // ignore duplicate configs
                 .ToArray();
+
             if (_configurations.Length == 0)
+            {
                 throw new FileFormatException("Configurations file cannot be empty. File: '" + filePath + "'");
+            }
 
             Dictionary<string, Vehicle> tempVehicles = new Dictionary<string, Vehicle>(32);
             byte[,] tempGrid = new byte[6, 6]; // assume a 6X6 _grid; change if needed
 
             int config = 1;
-            //foreach (string line in File.ReadLines(filePath))
             foreach (string line in _configurations)
             {
                 // check for correct number of semicolon-delimited sections
                 string[] sections = line.Split(';');
                 if (sections.Length != 3)
-                    throw new FileFormatException(string.Format("Expected 2 ';' (found {0}). File: '{1}', Line: {2}",
-                        sections.Length - 1, filePath, config));
+                {
+                    throw new FileFormatException(string.Format("Expected 2 ';' (found {0}). File: '{1}', Line: {2}", sections.Length - 1, filePath, config));
+                }
 
-                // ~~~ Check section 1 ~~~ (difficulty, number of rows, number of columns)
+                // ~~~ Check section 1 (difficulty, number of rows, number of columns) ~~~ 
                 string[] settings = sections[0].Trim().Split(' ');
                 int diff, rows, cols;
                 if (settings.Length != 3 || !Int32.TryParse(settings[0], out diff) || !Int32.TryParse(settings[1], out rows) ||
                     !Int32.TryParse(settings[2], out cols) || diff < 1 || rows < 1 || cols < 1)
-                    throw new FileFormatException(string.Format("Expected 3 positive integers. File: '{0}', Line: {1}, Section: '{2}'",
-                        filePath, config, sections[0]));
+                {
+                    throw new FileFormatException(string.Format("Expected 3 positive integers. File: '{0}', Line: {1}, Section: '{2}'", filePath, config, sections[0]));
+                }
 
-                // ~~~ Check section 2 ~~~ (vehicle encodings)
-                //byte[,] tempGrid = new byte[rows, cols];
+                // ~~~ Check section 2 (vehicle encodings) ~~~ 
                 if (rows != tempGrid.GetLength(0) || cols != tempGrid.GetLength(1)) // only allocate new grid if dimensions have changed
+                {
                     tempGrid = new byte[rows, cols];
+                }
                 else
+                {
                     Array.Clear(tempGrid, 0, tempGrid.Length);
+                }
+
                 string[] vehicleEncodings = sections[1].Split(',');
                 if (vehicleEncodings.Length == 1 && vehicleEncodings[0].Equals(""))
-                    throw new FileFormatException(string.Format("One or more vehicle encodings required. File: '{0}', Line: {1}", filePath, config));                
+                { 
+                    throw new FileFormatException(string.Format("One or more vehicle encodings required. File: '{0}', Line: {1}", filePath, config));
+                }                               
 
                 // validate each vehicle encoding (ID, row, col, vertical/horizontal, length)
                 tempVehicles.Clear();
@@ -144,39 +168,52 @@ namespace RushHourModel
                     int _row, _col, length;
                     if (vehicleData.Length != 5 || !Int32.TryParse(vehicleData[1], out _row) || !Int32.TryParse(vehicleData[2], out _col) ||
                         !Int32.TryParse(vehicleData[4], out length) || (!vehicleData[3].Equals("V") && !vehicleData[3].Equals("H")))
+                    {
                         throw new FileFormatException(string.Format("Expected vehicle encoding of the form '$ I I (V|H) I' where $ is a string, I is a positive integer, and the fourth element is a V or H. File: '{0}', Line: {1}, Encoding: '{2}'", filePath, config, ve));
+                    }
+
 
                     if (tempVehicles.ContainsKey(vehicleData[0]))
+                    {
                         throw new FileFormatException(string.Format("Duplicate vehicle ID. File: '{0}', Line: {1}, Encoding: '{2}'", filePath, config, ve));
+                    }  
 
                     int row = _row - 1; // change row and col to zero-indexed
                     int col = _col - 1;
                     bool vertical = vehicleData[3].Equals("V");
 
                     if (row < 0 || col < 0 || length < 1 || (vertical && row + length > rows) || (!vertical && col + length > cols))
+                    {
                         throw new FileFormatException(string.Format("Vehicle position and/or length is invalid or out of range. File: '{0}', Line: {1}, Encoding: '{2}'", filePath, config, ve));
+                    }
 
                     // make sure vehicles don't overlap
                     if (vertical)
+                    {
                         for (int i = 0; i < length; i++)
                         {
                             if (tempGrid[row + i, col] == 1)
-                                throw new FileFormatException(string.Format("Vehicle overlap. File: '{0}', Line: {1}, Encoding: '{2}'",
-                                    filePath, config, ve));
+                            {
+                                throw new FileFormatException(string.Format("Vehicle overlap. File: '{0}', Line: {1}, Encoding: '{2}'", filePath, config, ve));
+                            }
                             tempGrid[row + i, col] = 1;
                         }
+                    }
                     else
+                    {
                         for (int i = 0; i < length; i++)
                         {
                             if (tempGrid[row, col + i] == 1)
-                                throw new FileFormatException(string.Format("Vehicle overlap. File: '{0}', Line: {1}, Encoding: '{2}'",
-                                    filePath, config, ve));
+                            {
+                                throw new FileFormatException(string.Format("Vehicle overlap. File: '{0}', Line: {1}, Encoding: '{2}'", filePath, config, ve));
+                            }
                             tempGrid[row, col + i] = 1;
                         }
+                    }
                     tempVehicles.Add(vehicleData[0], new Vehicle(row, col, vertical, length));
                 }
 
-                // ~~~ Check section 3 ~~~ (solution moves)
+                // ~~~ Check section 3 (solution moves) ~~~ 
                 bool solved = false;
                 string[] solutionMoves = sections[2].Split(',');
                 foreach (string sm in solutionMoves)
@@ -185,24 +222,33 @@ namespace RushHourModel
                     string[] moveData = sm.Trim().Split(' ');
                     int spaces;
                     if (moveData.Length != 2 || !Int32.TryParse(moveData[1], out spaces))
+                    {
                         throw new FileFormatException(string.Format("Expected solution move of the form '$ I' where $ is a string and I is an integer. File: '{0}', Line: {1}, Move: '{2}'", filePath, config, sm));
+                    }
 
                     // validate vehicle ID
                     if (!tempVehicles.ContainsKey(moveData[0]))
+                    {
                         throw new FileFormatException(string.Format("Undefined vehicle ID in solution move. File: '{0}', Line: {1}, Move: '{2}'", filePath, config, sm));
+                    }                        
 
                     // execute/validate the move
                     if (!MoveVehiclePrivate(moveData[0], spaces, tempGrid, tempVehicles, true, out solved))
+                    {
                         throw new FileFormatException(string.Format("Illegal solution move (ensure previous moves are also correct). File: '{0}', Line: {1}, Move: '{2}'", filePath, config, sm));
+                    }
                 }
 
                 // make sure the moves solved the configuration
                 if (!solved)
+                {
                     throw new FileFormatException(string.Format("Solution moves did not solve configuration. File: '{0}', Line: {1}", filePath, config));
+                }                    
                 config++;
             }
         }
 
+        #region Multi-Thread Validation
 
         // THIS SEEMS TO BE SLOWER THAN THE SINGLE-THREADED VERSION. PERHAPS USING AN IDEAL/DYNAMIC NUMBER OF THREADS
         // EACH WOULD HELP, BUT I DOUBT IT. THIS MIGHT ONLY COME IN HANDY IF YOU WERE PROCESSING A HUGE CONFIGURATIONS FILE,
@@ -401,6 +447,8 @@ namespace RushHourModel
             }
         }
 
+        #endregion
+
 
         /// <summary>
         /// Sets the grid to the specified configuration. Enter value less than 1 for a random configuration.
@@ -416,7 +464,7 @@ namespace RushHourModel
             _undoMoves.Clear();
             _redoMoves.Clear();
             CanMakeSolutionMove = true;
-            File.Delete("move_log.txt");
+            TotalMoves = 0;
 
             if (config == CurrentConfig)
             {
@@ -478,10 +526,15 @@ namespace RushHourModel
             // add each solution move
             _solutionMoves.Clear();
             foreach (string solutionMove in sections[2].Split(','))
-                _solutionMoves.Add(solutionMove.Trim());
+            {
+                string[] solutionMoveData = solutionMove.Trim().Split(' ');
+                string vID = solutionMoveData[0];
+                int spaces = Int32.Parse(solutionMoveData[1]);
+                _solutionMoves.Add(new MoveInfo(vID, spaces, true));
+            }
 
             _nextSolutionMove = 0;
-            Solved = false; // configuration is now set and unsolved
+            _solved = false; // configuration is now set and unsolved
         }
 
 
@@ -521,8 +574,31 @@ namespace RushHourModel
                     }
                 }                
                 _nextSolutionMove = 0;
-                Solved = false;
+                _solved = false;
             }
+        }
+
+        /// <summary>
+        /// Returns an array of VehicleStructs representing all Vehicles in the grid.
+        /// </summary>
+        /// <returns>array of all VehicleStructs in the grid</returns>
+        public VehicleStruct[] GetVehicleStucts()
+        {
+            VehicleStruct[] vs = new VehicleStruct[_vehicles.Count];
+            int i = 0;
+            foreach (KeyValuePair<string, Vehicle> kv in _vehicles)
+            {
+                Vehicle v = kv.Value;
+                vs[i++] = new VehicleStruct(kv.Key, v.BackRow, v.BackCol, v.Vertical, v.Length);
+            }
+            return vs;
+        }
+
+
+        public VehicleStruct GetVehicleStuct(string vehicleID)
+        {
+            Vehicle v = _vehicles[vehicleID];
+            return new VehicleStruct(vehicleID, v.BackRow, v.BackCol, v.Vertical, v.Length);
         }
 
 
@@ -547,7 +623,7 @@ namespace RushHourModel
                     _undoMoves.Push(new MoveInfo(vehicleID, spaces, false));
                     _redoMoves.Clear();
                     CanMakeSolutionMove = false;
-                    //File.AppendAllText("move_log.txt", string.Format("\nUser {0} {1}", vehicleID, spaces)); // DELETE ME ********************************
+                    TotalMoves++;
                 }
             }
             return moveSuccessful;
@@ -561,27 +637,19 @@ namespace RushHourModel
         /// <returns>VehicleStruct of moved vehicle if move was successful, null otherwise</returns>
         public VehicleStruct? NextSolutionMove()
         {
-            // a solution move can only be executed if the grid has just been set/reset with no user moves made
-            //if (_userMoveMade || _nextSolutionMove == _solutionMoves.Count) // TODO: REPLACE WITH !CanMakeSolutionMove?
-            //{
-            //    return null;
-            //}
-
             if (CanMakeSolutionMove)
             {
-                string[] moveData = _solutionMoves[_nextSolutionMove++].Trim().Split(' ');
-                string vID = moveData[0];
-                int spaces = Int32.Parse(moveData[1]);
+                MoveInfo solutionMove = _solutionMoves[_nextSolutionMove++]; ;
                 CanMakeSolutionMove = !(_nextSolutionMove == _solutionMoves.Count);
+                TotalMoves++;
 
-                MoveVehiclePrivate(vID, spaces, _grid, _vehicles, false, out _solved);
-                _undoMoves.Push(new MoveInfo(vID, spaces, true));
+                MoveVehiclePrivate(solutionMove.VehicleID, solutionMove.Spaces, _grid, _vehicles, false, out _solved);
+                _undoMoves.Push(solutionMove);
                 _redoMoves.Clear();
 
-                Vehicle movedVehicle = _vehicles[vID];
+                Vehicle movedVehicle = _vehicles[solutionMove.VehicleID];
 
-                //File.AppendAllText("move_log.txt", string.Format("\nSolution {0} {1}", vID, spaces)); // DELETE ME ********************************
-                return new VehicleStruct(vID, movedVehicle.BackRow, movedVehicle.BackCol, movedVehicle.Vertical, movedVehicle.Length);
+                return new VehicleStruct(solutionMove.VehicleID, movedVehicle.BackRow, movedVehicle.BackCol, movedVehicle.Vertical, movedVehicle.Length);
             }
             return null;
         }
@@ -605,10 +673,11 @@ namespace RushHourModel
                     CanMakeSolutionMove = true;                    
                 }
 
+                TotalMoves--;
+
                 MoveVehiclePrivate(lastMoveInfo.VehicleID, lastMoveInfo.Spaces * -1, _grid, _vehicles, false, out _solved); // revert the move
                 Vehicle lastVehicleMoved = _vehicles[lastMoveInfo.VehicleID];
 
-                //File.AppendAllText("move_log.txt", string.Format("\n{0} {1} {2}", lastMoveInfo.IsSolutionMove ? "UndoSolution" : "UndoUser", lastMoveInfo.VehicleID, // DELETE ME ********************************lastMoveInfo.Spaces));
                 return new VehicleStruct(lastMoveInfo.VehicleID, lastVehicleMoved.BackRow, lastVehicleMoved.BackCol, lastVehicleMoved.Vertical, lastVehicleMoved.Length);
             }
             return null;
@@ -630,61 +699,16 @@ namespace RushHourModel
                 else
                 {
                     CanMakeSolutionMove = false;
-                }  
+                }
+
+                TotalMoves++;
 
                 MoveVehiclePrivate(lastMoveInfo.VehicleID, lastMoveInfo.Spaces, _grid, _vehicles, false, out _solved);
                 Vehicle lastVehicleMoved = _vehicles[lastMoveInfo.VehicleID];
 
-                //File.AppendAllText("move_log.txt", string.Format("\n{0} {1} {2}", lastMoveInfo.IsSolutionMove ? "RedoSolution" : "RedoUser", lastMoveInfo.VehicleID, lastMoveInfo.Spaces)); // DELETE ME ********************************
                 return new VehicleStruct(lastMoveInfo.VehicleID, lastVehicleMoved.BackRow, lastVehicleMoved.BackCol, lastVehicleMoved.Vertical, lastVehicleMoved.Length);
             }
-
             return null;
-        }
-
-        // TODO: IS THIS FUNCTION NEEDED SINCE UndoMove() HANDLES THIS?
-        /// <summary>
-        /// Undos the most recent solution move in the grid. If a user move has been made, the grid must be
-        /// set or reset to undo a solution move.
-        /// </summary>
-        /// <returns>VehicleStruct of moved vehicle if move was successful, null otherwise</returns>
-        //public VehicleStruct? UndoSolutionMove()
-        //{
-        //    if (_userMoveMade || _nextSolutionMove == 0)
-        //        return null;
-
-        //    string[] moveData = _solutionMoves[--_nextSolutionMove].Trim().Split(' ');
-        //    string vID = moveData[0];
-        //    int spaces = Int32.Parse(moveData[1]) * -1;
-
-        //    MoveVehiclePrivate(vID, spaces, _grid, _vehicles, false, out _solved);
-        //    _solutionMoveMade = true;
-        //    Vehicle movedVehicle = _vehicles[vID];
-        //    return new VehicleStruct(vID, movedVehicle.BackRow, movedVehicle.BackCol, movedVehicle.Vertical, movedVehicle.Length);
-        //}
-
-
-        /// <summary>
-        /// Returns an array of VehicleStructs representing all Vehicles in the grid.
-        /// </summary>
-        /// <returns>array of all VehicleStructs in the grid</returns>
-        public VehicleStruct[] GetVehicleStucts()
-        {
-            VehicleStruct[] vs = new VehicleStruct[_vehicles.Count];
-            int i = 0;
-            foreach (KeyValuePair<string, Vehicle> kv in _vehicles)
-            {
-                Vehicle v = kv.Value;
-                vs[i++] = new VehicleStruct(kv.Key, v.BackRow, v.BackCol, v.Vertical, v.Length);
-            }
-            return vs;
-        }
-
-
-        public VehicleStruct GetVehicleStuct(string vehicleID)
-        {
-            Vehicle v = _vehicles[vehicleID];
-            return new VehicleStruct(vehicleID, v.BackRow, v.BackCol, v.Vertical, v.Length);
         }
 
 
@@ -877,12 +901,12 @@ namespace RushHourModel
             /// </summary>
             /// <param name="vehicleID">ID of moved vehicle</param>
             /// <param name="spaces">number of spaces moved</param>
-            /// <param name="userMove">true if user made move, false if solution move</param>
-            public MoveInfo(string vehicleID, int spaces, bool userMove)
+            /// <param name="isSolutionMove">true if solution move, false if user move</param>
+            public MoveInfo(string vehicleID, int spaces, bool isSolutionMove)
             {
                 VehicleID = vehicleID;
                 Spaces = spaces;
-                IsSolutionMove = userMove;
+                IsSolutionMove = isSolutionMove;
             }
 
             public override bool Equals(object obj)
