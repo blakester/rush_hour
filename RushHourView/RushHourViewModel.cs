@@ -14,9 +14,14 @@ namespace RushHourView
 {
     public class RushHourViewModel : INotifyPropertyChanged
     {
-        public RelayCommand ConfigEnteredCommand { get; private set; }
-        public RelayCommand UndoCommand { get; private set; }
-        public RelayCommand RedoCommand { get; private set; }
+        // TODO: CLASS VehicleGrid.MoveInfo HAS SUFFICIENT INFO FOR A MOVE (COULD REPLACE VehicleStruct BELOW), BUT WOULD HAVE TO MAKE PUBLIC
+        public event EventHandler<VehicleStruct?> VehicleMoved;
+
+        public DelegateCommand ConfigEnteredCommand { get; private set; }
+        //public DelegateCommand MoveVehicleCommand { get; private set; }
+        public DelegateCommand UndoCommand { get; private set; }
+        public DelegateCommand RedoCommand { get; private set; }
+        
 
         public RushHourViewModel()
         {
@@ -26,9 +31,10 @@ namespace RushHourView
                 VehicleGrid = new VehicleGrid("../../../configurations.txt", 1);
                 //TotalConfigs = VehicleGrid.TotalConfigs;
                 //_difficulty = VehicleGrid.ConfigDifficulty;
-                ConfigEnteredCommand = new RelayCommand(ConfigEntered);
-                //UndoCommand = new RelayCommand(Undo, UndoCanExecute);
-                //RedoCommand = new RelayCommand(Redo, RedoCanExecute);
+                ConfigEnteredCommand = new DelegateCommand(ConfigEntered);
+                //MoveVehicleCommand = new DelegateCommand(MoveVehicle);
+                UndoCommand = new DelegateCommand(Undo, UndoCanExecute);
+                RedoCommand = new DelegateCommand(Redo, RedoCanExecute);
             }
             catch (Exception ex)
             {
@@ -37,11 +43,23 @@ namespace RushHourView
             }
         }
 
+        // TODO: MAKE COMMAND OUT OF THIS? THE ISSUE IS THE PARAMETERS. ONE SOLUTION WOULD BE TO SIMPLY HAVE THEM BE ADDITIONAL
+        // PUBLIC PROPERTIES, E.G. SelectedVehicleID AND SpacesToMove. BUT THIS SEEMS MESSIER. ANY REASON TO MAKE THIS A COMMAND?
+        public bool MoveVehicle(string vehicleID, int spaces)
+        {
+            bool moveSuccessful = VehicleGrid.MoveVehicle(vehicleID, spaces);
+            //CanUndo = VehicleGrid.CanUndoMove;
+            UndoCommand.RaiseCanExecuteChanged();
+            RedoCommand.RaiseCanExecuteChanged();
+            return moveSuccessful;
+        }
+
 
 
         private void Undo()
         {
-            VehicleGrid.UndoMove();
+            VehicleStruct? movedVehicle = VehicleGrid.UndoMove();
+            VehicleMoved.Invoke(this, movedVehicle);
             UndoCommand.RaiseCanExecuteChanged();
             RedoCommand.RaiseCanExecuteChanged();
         }
@@ -113,6 +131,7 @@ namespace RushHourView
             get { return VehicleGrid.CurrentConfig; }
             set
             {
+                // TODO: SHOULD I BE USING SetProperty()?
                 if (value != VehicleGrid.CurrentConfig)
                 {
                     VehicleGrid.SetConfig(value);

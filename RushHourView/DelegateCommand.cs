@@ -3,17 +3,17 @@ using System.Windows.Input;
 
 namespace RushHourView
 {
-    public class RelayCommand : ICommand
+    public class DelegateCommand : ICommand
     {
         private Action<object> _methodToExecute;
         private Func<bool> _canExecuteEvaluator;
 
-        public RelayCommand(Action methodToExecute, Func<bool> canExecuteEvaluator = null)
+        public DelegateCommand(Action methodToExecute, Func<bool> canExecuteEvaluator = null)
             : this(x => methodToExecute(), canExecuteEvaluator)
         {
         }
 
-        public RelayCommand(Action<object> methodToExecute, Func<bool> canExecuteEvaluator = null)
+        public DelegateCommand(Action<object> methodToExecute, Func<bool> canExecuteEvaluator = null)
         {
             if (methodToExecute == null)
             {

@@ -11,6 +11,7 @@
         MinWidth="525">
     <!--xmlns:i="http://schemas.microsoft.com/expression/2010/interactivity"-->
     <!--xmlns:i="clr-namespace:System.Windows.Interactivity;assembly=System.Windows.Interactivity"-->
+    <!--TODO: WHEN THE DATACONTEXT IS SET HERE, THIS SEEMS TO BE CAUSING THE EXCEPTION WHERE IT CAN'T FIND THE CONFIG FILE-->
     <!--<Window.DataContext>
         <local:RushHourViewModel/>
     </Window.DataContext>-->
@@ -87,14 +88,14 @@
                     <Label Content="Solution Moves" HorizontalAlignment="Center"/>
                     <Label x:Name="solutionMoves" Content="10" HorizontalAlignment="Center" Margin="0,-10,0,0"/>
                 </StackPanel>-->
-                <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Left" Margin="10,0,0,0">
+                <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center">
                     <Label Content="Solution Required Moves:" ToolTip="Number of moves required by solution to solve" FontSize="15"/>
                     <Label x:Name="solutionMoves" Grid.Column="1" Content="{Binding RequiredSolutionMoves}" FontSize="15"/>
                 </StackPanel>
 
                 <Button x:Name="solutionMoveButton" Grid.Row="1" Grid.Column="2" Margin="0,0,0,10" Content="Next Solution Move" Padding="3" Click="solutionMoveButton_Click"/>
 
-                <Button x:Name="undoButton" Grid.Row="2" Grid.Column="0" Margin="0,0,0,10" FontFamily="Segoe UI Symbol" FontSize="20" Content="&#x21BA;" ToolTip="Undo move" Click="undoButton_Click"/>
+                <Button x:Name="undoButton" Grid.Row="2" Grid.Column="0" Margin="0,0,0,10" FontFamily="Segoe UI Symbol" FontSize="20" Content="&#x21BA;" ToolTip="Undo move" Command="{Binding UndoCommand}"/>
 
                 <!--<StackPanel Grid.Row="2" Grid.Column="1" Margin="0,-10,0,0">
                     <Label Content="Your Moves" HorizontalAlignment="Center"/>
@@ -105,7 +106,7 @@
                     <Label x:Name="moveCount" Content="{Binding TotalMoves}" FontSize="15"/>
                 </StackPanel>
 
-                <Button x:Name="redoButton" Grid.Row="2" Grid.Column="2" Margin="0,0,0,10" FontFamily="Segoe UI Symbol" FontSize="20" Content="&#x21BB;" ToolTip="Redo move" Click="redoButton_Click"/>
+                <Button x:Name="redoButton" Grid.Row="2" Grid.Column="2" Margin="0,0,0,10" FontFamily="Segoe UI Symbol" FontSize="20" Content="&#x21BB;" ToolTip="Redo move" Command="{Binding RedoCommand}"/>
 
                 <!--DRAG-DROP DEBUGGING INFO-->
                 <!--<StackPanel Grid.Row="1" Grid.RowSpan="2" Grid.ColumnSpan="3">

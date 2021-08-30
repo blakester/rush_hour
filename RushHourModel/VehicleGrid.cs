@@ -453,7 +453,7 @@ namespace RushHourModel
         /// <summary>
         /// Sets the grid to the specified configuration. Enter value less than 1 for a random configuration.
         /// </summary>
-        /// <param name="config">configuration to set grid to (configs start at 1)</param>
+        /// <param name="config">configuration to set grid to (configs start at 1, enter less than 1 for random)</param>
         public void SetConfig(int config)
         {
             if (config > _configurations.Length)
@@ -477,9 +477,10 @@ namespace RushHourModel
             {
                 Random rand = new Random();
                 do
+                {
                     config = rand.Next(_configurations.Length) + 1;
+                }
                 while (config == CurrentConfig && _configurations.Length > 1); // ensure random config doesn't equal the current one
-                    //config = rand.Next(configurations.Length) + 1;
             }
             CurrentConfig = config;
 
@@ -500,7 +501,9 @@ namespace RushHourModel
                 Columns = columns;
             }
             else
+            {
                 Array.Clear(_grid, 0, _grid.Length);
+            }
             string[] vehicleEncodings = sections[1].Split(',');
             _vehicles.Clear();
             foreach (string ve in vehicleEncodings)
@@ -516,11 +519,19 @@ namespace RushHourModel
 
                 // mark the vehicle in the underlying grid
                 if (vertical)
+                {
                     for (int i = 0; i < length; i++)
+                    {
                         _grid[row + i, col] = 1;
+                    }
+                }
                 else
+                {
                     for (int i = 0; i < length; i++)
-                        _grid[row, col + i] = 1;               
+                    {
+                        _grid[row, col + i] = 1;
+                    }
+                }
             }
 
             // add each solution move
@@ -715,7 +726,9 @@ namespace RushHourModel
         public bool IsCellOpen(int row, int col)
         {
             if (row >= 0 && row < Rows && col >= 0 && col < Columns)
+            {
                 return _grid[row, col] == 0;
+            }
             return false;
         }
 
@@ -804,10 +817,16 @@ namespace RushHourModel
                     if (validate)
                     {
                         if (v.FrontRow + spaces >= rows) // check inbounds
+                        {
                             return false;
+                        }
                         for (int i = v.FrontRow + 1; i <= v.FrontRow + spaces; i++) // check spaces below are empty
+                        {
                             if (grid[i, v.FrontCol] == 1)
+                            {
                                 return false;
+                            }
+                        }
                     }
                     for (int i = 0; i < spaces; i++)
                     {
@@ -821,10 +840,16 @@ namespace RushHourModel
                     if (validate)
                     {
                         if (v.BackRow + spaces < 0) // check inbounds
+                        {
                             return false;
+                        }
                         for (int i = v.BackRow - 1; i >= v.BackRow + spaces; i--) // check spaces above are empty
+                        {
                             if (grid[i, v.BackCol] == 1)
+                            {
                                 return false;
+                            }
+                        }
                     }
                     for (int i = spaces; i < 0; i++)
                     {
@@ -841,10 +866,16 @@ namespace RushHourModel
                     if (validate)
                     {
                         if (v.FrontCol + spaces >= columns)
+                        {
                             return false;
+                        }
                         for (int i = v.FrontCol + 1; i <= v.FrontCol + spaces; i++) // check spaces ahead are empty
+                        {
                             if (grid[v.FrontRow, i] == 1)
+                            {
                                 return false;
+                            }
+                        }
                     }
                     for (int i = 0; i < spaces; i++)
                     {
@@ -852,7 +883,9 @@ namespace RushHourModel
                         grid[v.FrontRow, v.FrontCol] = 1; // mark the new right-most cell of the Vehicle
                     }
                     if (vehicleID.Equals("X") && v.FrontCol == (columns - 1)) // check for victory
+                    {
                         solved = true;
+                    }
                 }
                 // move left
                 else
@@ -860,10 +893,16 @@ namespace RushHourModel
                     if (validate)
                     {
                         if (v.BackCol + spaces < 0)
+                        {
                             return false;
+                        }
                         for (int i = v.BackCol - 1; i >= v.BackCol + spaces; i--) // check spaces behind are empty
+                        {
                             if (grid[v.BackRow, i] == 1)
+                            {
                                 return false;
+                            }
+                        }
                     }
                     for (int i = spaces; i < 0; i++)
                     {

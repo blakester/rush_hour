@@ -28,6 +28,7 @@ namespace RushHourView
         private Border[,] _cellBorders;
         private VehicleGrid _vehicleGrid;
         //private int _initialConfig = 1;
+        RushHourViewModel _vm;
 
         // fields used for dragging _vehicles
         private Point _anchorMousePoint;  // initial position of mouse on left button click
@@ -42,8 +43,7 @@ namespace RushHourView
 
         public MainWindow()
         {
-            this.DataContext = new RushHourViewModel();
-            InitializeComponent();
+
             
             try
             {
@@ -54,7 +54,11 @@ namespace RushHourView
                 // END ORIGINAL, NON-VIEW MODEL CODE
 
                 // VIEW MODEL VERSION
-                _vehicleGrid = ((RushHourViewModel)DataContext).VehicleGrid;
+                _vm = new RushHourViewModel();
+                DataContext = _vm;                
+                _vehicleGrid = _vm.VehicleGrid;
+                _vm.VehicleMoved += MainWindow_VehicleMoved;
+                InitializeComponent();
                 // END VIEW MODEL VERSION
 
                 SetGameGrid();
@@ -67,9 +71,15 @@ namespace RushHourView
             }
         }
 
+        void MainWindow_VehicleMoved(object sender, VehicleStruct? e)
+        {
+            Border borderToMove = _vIDsToBorders[e.Value.id];
+            Grid.SetColumn(borderToMove, e.Value.column);
+            Grid.SetRow(borderToMove, e.Value.row);
+        }
+
         private void SetGameGrid()
         {
-            //_vehicleGrid.ClearPreviousMoves();
             _bordersToVIDs.Clear();
             _vIDsToBorders.Clear();
             gameGrid.Children.Clear();
@@ -159,7 +169,7 @@ namespace RushHourView
                 _bordersToVIDs.Add(vehicleBorder, vd.id);
                 _vIDsToBorders.Add(vd.id, vehicleBorder);                
             }
-            undoButton.IsEnabled = _vehicleGrid.CanUndoMove;
+            //undoButton.IsEnabled = _vehicleGrid.CanUndoMove;
             redoButton.IsEnabled = _vehicleGrid.CanRedoMove;
             solutionMoveButton.IsEnabled = _vehicleGrid.CanMakeSolutionMove;
         }
@@ -406,7 +416,7 @@ namespace RushHourView
 
                 if (wasVehicleMoved)
                 {
-                    undoButton.IsEnabled = _vehicleGrid.CanUndoMove;
+                    //undoButton.IsEnabled = _vehicleGrid.CanUndoMove;
                     redoButton.IsEnabled = _vehicleGrid.CanRedoMove;
                     solutionMoveButton.IsEnabled = false;
                 }
@@ -577,20 +587,26 @@ namespace RushHourView
                 {
                     int destination = Grid.GetColumn(border) - 1;
                     Grid.SetColumn(border, destination);
-                    undoButton.IsEnabled = _vehicleGrid.CanUndoMove;
+                    //undoButton.IsEnabled = _vehicleGrid.CanUndoMove;
                     redoButton.IsEnabled = _vehicleGrid.CanRedoMove;
                     solutionMoveButton.IsEnabled = false;
                 }
             }
             else if (e.Key == Key.Right && !vertical)
             {
-                if (_vehicleGrid.MoveVehicle(vID, 1))
+                //if (_vehicleGrid.MoveVehicle(vID, 1))
+                //{
+                //    int destination = Grid.GetColumn(border) + 1;
+                //    Grid.SetColumn(border, destination);
+                //    undoButton.IsEnabled = _vehicleGrid.CanUndoMove;
+                //    redoButton.IsEnabled = _vehicleGrid.CanRedoMove;
+                //    solutionMoveButton.IsEnabled = false;
+                //}
+
+                if (_vm.MoveVehicle(vID, 1))
                 {
                     int destination = Grid.GetColumn(border) + 1;
                     Grid.SetColumn(border, destination);
-                    undoButton.IsEnabled = _vehicleGrid.CanUndoMove;
-                    redoButton.IsEnabled = _vehicleGrid.CanRedoMove;
-                    solutionMoveButton.IsEnabled = false;
                 }
             }
             else if (e.Key == Key.Up && vertical)
@@ -599,7 +615,7 @@ namespace RushHourView
                 {
                     int destination = Grid.GetRow(border) - 1;
                     Grid.SetRow(border, destination);
-                    undoButton.IsEnabled = _vehicleGrid.CanUndoMove;
+                    //undoButton.IsEnabled = _vehicleGrid.CanUndoMove;
                     redoButton.IsEnabled = _vehicleGrid.CanRedoMove;
                     solutionMoveButton.IsEnabled = false;
                 }
@@ -610,7 +626,7 @@ namespace RushHourView
                 {
                     int destination = Grid.GetRow(border) + 1;
                     Grid.SetRow(border, destination);
-                    undoButton.IsEnabled = _vehicleGrid.CanUndoMove;
+                    //undoButton.IsEnabled = _vehicleGrid.CanUndoMove;
                     redoButton.IsEnabled = _vehicleGrid.CanRedoMove;
                     solutionMoveButton.IsEnabled = false;
                 }
@@ -642,7 +658,7 @@ namespace RushHourView
                 // disable button if puzzle is _solved
                 //if (_vehicleGrid.Solved)
                 //    solutionMoveButton.IsEnabled = false;
-                undoButton.IsEnabled = true;
+                //undoButton.IsEnabled = true;
                 redoButton.IsEnabled = _vehicleGrid.CanRedoMove;
                 solutionMoveButton.IsEnabled = _vehicleGrid.CanMakeSolutionMove;
             }
@@ -664,7 +680,7 @@ namespace RushHourView
                 _selectedBorder.Focus();
                 Grid.SetRow(lastMovedBorder, lastMovedVehicle.Value.row);
                 Grid.SetColumn(lastMovedBorder, lastMovedVehicle.Value.column);
-                undoButton.IsEnabled = _vehicleGrid.CanUndoMove;
+                //undoButton.IsEnabled = _vehicleGrid.CanUndoMove;
                 redoButton.IsEnabled = _vehicleGrid.CanRedoMove;
                 solutionMoveButton.IsEnabled = _vehicleGrid.CanMakeSolutionMove;
             }
@@ -684,7 +700,7 @@ namespace RushHourView
                 _selectedBorder.Focus();
                 Grid.SetRow(lastMovedBorder, lastMovedVehicle.Value.row);
                 Grid.SetColumn(lastMovedBorder, lastMovedVehicle.Value.column);
-                undoButton.IsEnabled = _vehicleGrid.CanUndoMove;
+                //undoButton.IsEnabled = _vehicleGrid.CanUndoMove;
                 redoButton.IsEnabled = _vehicleGrid.CanRedoMove;
                 solutionMoveButton.IsEnabled = _vehicleGrid.CanMakeSolutionMove;
             }
