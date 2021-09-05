@@ -21,6 +21,7 @@ namespace RushHourView
         //public DelegateCommand MoveVehicleCommand { get; private set; }
         public DelegateCommand UndoCommand { get; private set; }
         public DelegateCommand RedoCommand { get; private set; }
+        public DelegateCommand SolutionMoveCommand { get; private set; }
         
 
         public RushHourViewModel()
@@ -35,6 +36,7 @@ namespace RushHourView
                 //MoveVehicleCommand = new DelegateCommand(MoveVehicle);
                 UndoCommand = new DelegateCommand(Undo, UndoCanExecute);
                 RedoCommand = new DelegateCommand(Redo, RedoCanExecute);
+                SolutionMoveCommand = new DelegateCommand(SolutionMove, SolutionMoveCanExecute);
             }
             catch (Exception ex)
             {
@@ -42,6 +44,8 @@ namespace RushHourView
                 MessageBox.Show("ERROR FROM ViewModel: " + ex.Message);
             }
         }
+
+
 
         // TODO: MAKE COMMAND OUT OF THIS? THE ISSUE IS THE PARAMETERS. ONE SOLUTION WOULD BE TO SIMPLY HAVE THEM BE ADDITIONAL
         // PUBLIC PROPERTIES, E.G. SelectedVehicleID AND SpacesToMove. BUT THIS SEEMS MESSIER. ANY REASON TO MAKE THIS A COMMAND?
@@ -62,13 +66,25 @@ namespace RushHourView
             VehicleMoved.Invoke(this, movedVehicle);
             UndoCommand.RaiseCanExecuteChanged();
             RedoCommand.RaiseCanExecuteChanged();
+            SolutionMoveCommand.RaiseCanExecuteChanged();
         }
 
         private void Redo()
         {
-            VehicleGrid.RedoMove();
+            VehicleStruct? movedVehicle = VehicleGrid.RedoMove();
+            VehicleMoved.Invoke(this, movedVehicle); 
             UndoCommand.RaiseCanExecuteChanged();
             RedoCommand.RaiseCanExecuteChanged();
+            SolutionMoveCommand.RaiseCanExecuteChanged();
+        }
+
+        private void SolutionMove()
+        {
+            VehicleStruct? movedVehicle = VehicleGrid.NextSolutionMove();
+            VehicleMoved.Invoke(this, movedVehicle);
+            UndoCommand.RaiseCanExecuteChanged();
+            RedoCommand.RaiseCanExecuteChanged();
+            SolutionMoveCommand.RaiseCanExecuteChanged();
         }
 
         private bool UndoCanExecute()
@@ -79,6 +95,11 @@ namespace RushHourView
         private bool RedoCanExecute()
         {
             return VehicleGrid.CanRedoMove;
+        }
+
+        private bool SolutionMoveCanExecute()
+        {
+            return VehicleGrid.CanMakeSolutionMove;
         }
 
         // THIS IS FOR EXPERIMENTATION. THERE'S PROBABLY A BETTER WAY TO HANDLE ENTERING A CONFIG.

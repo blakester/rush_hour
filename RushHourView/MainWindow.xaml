@@ -93,7 +93,7 @@
                     <Label x:Name="solutionMoves" Grid.Column="1" Content="{Binding RequiredSolutionMoves}" FontSize="15"/>
                 </StackPanel>
 
-                <Button x:Name="solutionMoveButton" Grid.Row="1" Grid.Column="2" Margin="0,0,0,10" Content="Next Solution Move" Padding="3" Click="solutionMoveButton_Click"/>
+                <Button x:Name="solutionMoveButton" Grid.Row="1" Grid.Column="2" Margin="0,0,0,10" Content="Next Solution Move" Padding="3" Command="{Binding SolutionMoveCommand}"/>
 
                 <Button x:Name="undoButton" Grid.Row="2" Grid.Column="0" Margin="0,0,0,10" FontFamily="Segoe UI Symbol" FontSize="20" Content="&#x21BA;" ToolTip="Undo move" Command="{Binding UndoCommand}"/>
 
