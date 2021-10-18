@@ -52,39 +52,29 @@ namespace RushHourView
         public bool MoveVehicle(string vehicleID, int spaces)
         {
             bool moveSuccessful = VehicleGrid.MoveVehicle(vehicleID, spaces);
-            //CanUndo = VehicleGrid.CanUndoMove;
-            UndoCommand.RaiseCanExecuteChanged();
-            RedoCommand.RaiseCanExecuteChanged();
+            MoveCommandsRaiseCanExecuteChanged();
             return moveSuccessful;
         }
-
-
 
         private void Undo()
         {
             VehicleStruct? movedVehicle = VehicleGrid.UndoMove();
             VehicleMoved.Invoke(this, movedVehicle);
-            UndoCommand.RaiseCanExecuteChanged();
-            RedoCommand.RaiseCanExecuteChanged();
-            SolutionMoveCommand.RaiseCanExecuteChanged();
+            MoveCommandsRaiseCanExecuteChanged();
         }
 
         private void Redo()
         {
             VehicleStruct? movedVehicle = VehicleGrid.RedoMove();
-            VehicleMoved.Invoke(this, movedVehicle); 
-            UndoCommand.RaiseCanExecuteChanged();
-            RedoCommand.RaiseCanExecuteChanged();
-            SolutionMoveCommand.RaiseCanExecuteChanged();
+            VehicleMoved.Invoke(this, movedVehicle);
+            MoveCommandsRaiseCanExecuteChanged();
         }
 
         private void SolutionMove()
         {
             VehicleStruct? movedVehicle = VehicleGrid.NextSolutionMove();
             VehicleMoved.Invoke(this, movedVehicle);
-            UndoCommand.RaiseCanExecuteChanged();
-            RedoCommand.RaiseCanExecuteChanged();
-            SolutionMoveCommand.RaiseCanExecuteChanged();
+            MoveCommandsRaiseCanExecuteChanged();
         }
 
         private bool UndoCanExecute()
@@ -122,6 +112,7 @@ namespace RushHourView
             // END ATTEMPT 2           
         }
 
+        // TODO: SHOULD THIS BE PHASED OUT IN MainWindow.xaml.cs THEN DELETED? SHOULD ALL ACTIONS SHOULD BE VIA COMMANDS AND METHODS IN VM? NO DIRECT ACCESS TO VehicleGrid?
         public VehicleGrid VehicleGrid { get; private set; }
 
         //public int TotalConfigs
@@ -163,12 +154,6 @@ namespace RushHourView
             }
         }
 
-        //public int Difficulty
-        //{
-        //    get { return _difficulty; }
-        //    private set { SetProperty(ref _difficulty, value); }
-        //}
-
         public int Difficulty
         {
             get { return VehicleGrid.ConfigDifficulty; }
@@ -182,6 +167,14 @@ namespace RushHourView
         public int RequiredSolutionMoves
         {
             get { return VehicleGrid.RequiredSolutionMoves; }
+        }
+
+        private void MoveCommandsRaiseCanExecuteChanged()
+        {
+            UndoCommand.RaiseCanExecuteChanged();
+            RedoCommand.RaiseCanExecuteChanged();
+            SolutionMoveCommand.RaiseCanExecuteChanged();
+            OnPropertyChanged("TotalMoves");
         }
 
         #region INotifyPropertyChanged Members

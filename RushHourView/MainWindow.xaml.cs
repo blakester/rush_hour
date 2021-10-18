@@ -401,17 +401,17 @@ namespace RushHourView
                 {
                     Point pointFromTopMostWall = vehicleBorder.TranslatePoint(new Point(0, 0), _cellBorders[0, vehicleColumn]);
                     int nearestRow = (int)Math.Round(pointFromTopMostWall.Y / cellSize, 0);
-                    int spacesMoved = (nearestRow - vehicleRow);
+                    int spacesMoved = nearestRow - vehicleRow;
                     Grid.SetRow(vehicleBorder, nearestRow);
-                    wasVehicleMoved = _vehicleGrid.MoveVehicle(_bordersToVIDs[vehicleBorder], spacesMoved); // move vehicle in underlying _grid
+                    wasVehicleMoved = _vm.MoveVehicle(_bordersToVIDs[vehicleBorder], spacesMoved); // move vehicle in underlying _grid
                 }
                 else // horizontal vehicle
                 {
                     Point pointFromLeftMostWall = vehicleBorder.TranslatePoint(new Point(0, 0), _cellBorders[vehicleRow, 0]);
                     int nearestColumn = (int)Math.Round(pointFromLeftMostWall.X / cellSize, 0);
-                    int spacesMoved = (nearestColumn - vehicleColumn);
+                    int spacesMoved = nearestColumn - vehicleColumn;
                     Grid.SetColumn(vehicleBorder, nearestColumn);
-                    wasVehicleMoved = _vehicleGrid.MoveVehicle(_bordersToVIDs[vehicleBorder], spacesMoved); // move vehicle in underlying _grid
+                    wasVehicleMoved = _vm.MoveVehicle(_bordersToVIDs[vehicleBorder], spacesMoved); // move vehicle in underlying _grid
                 }
 
                 if (wasVehicleMoved)
@@ -583,26 +583,14 @@ namespace RushHourView
 
             if (e.Key == Key.Left && !vertical)
             {
-                if (_vehicleGrid.MoveVehicle(vID, -1))
+                if (_vm.MoveVehicle(vID, -1))
                 {
                     int destination = Grid.GetColumn(border) - 1;
                     Grid.SetColumn(border, destination);
-                    //undoButton.IsEnabled = _vehicleGrid.CanUndoMove;
-                    //redoButton.IsEnabled = _vehicleGrid.CanRedoMove;
-                    //solutionMoveButton.IsEnabled = false;
                 }
             }
             else if (e.Key == Key.Right && !vertical)
             {
-                //if (_vehicleGrid.MoveVehicle(vID, 1))
-                //{
-                //    int destination = Grid.GetColumn(border) + 1;
-                //    Grid.SetColumn(border, destination);
-                //    undoButton.IsEnabled = _vehicleGrid.CanUndoMove;
-                //    redoButton.IsEnabled = _vehicleGrid.CanRedoMove;
-                //    solutionMoveButton.IsEnabled = false;
-                //}
-
                 if (_vm.MoveVehicle(vID, 1))
                 {
                     int destination = Grid.GetColumn(border) + 1;
@@ -611,24 +599,18 @@ namespace RushHourView
             }
             else if (e.Key == Key.Up && vertical)
             {
-                if (_vehicleGrid.MoveVehicle(vID, -1))
+                if (_vm.MoveVehicle(vID, -1))
                 {
                     int destination = Grid.GetRow(border) - 1;
                     Grid.SetRow(border, destination);
-                    //undoButton.IsEnabled = _vehicleGrid.CanUndoMove;
-                    //redoButton.IsEnabled = _vehicleGrid.CanRedoMove;
-                    //solutionMoveButton.IsEnabled = false;
                 }
             }
             else if (e.Key == Key.Down && vertical)
             {
-                if (_vehicleGrid.MoveVehicle(vID, 1))
+                if (_vm.MoveVehicle(vID, 1))
                 {
                     int destination = Grid.GetRow(border) + 1;
                     Grid.SetRow(border, destination);
-                    //undoButton.IsEnabled = _vehicleGrid.CanUndoMove;
-                    //redoButton.IsEnabled = _vehicleGrid.CanRedoMove;
-                    //solutionMoveButton.IsEnabled = false;
                 }
             }
             e.Handled = true;
